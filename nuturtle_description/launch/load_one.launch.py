@@ -15,6 +15,8 @@ from launch.actions import DeclareLaunchArgument
 from launch.substitutions import PathJoinSubstitution
 from launch.conditions import LaunchConfigurationEquals
 from launch_ros.substitutions import FindPackageShare
+from launch.substitutions import TextSubstitution
+from launch.substitutions import Command
 
 def generate_launch_description():
     return LaunchDescription([
@@ -23,10 +25,21 @@ def generate_launch_description():
         
         Node(package="joint_state_publisher",
              executable="joint_state_publisher",
+             arguments=[PathJoinSubstitution([FindPackageShare("nuturtle_description"), "urdf", "turtlebot3_burger.urdf.xacro"])],
              condition=LaunchConfigurationEquals('use_jsp', 'true')),
         
         Node(package="rviz2",
              executable="rviz2",
              condition=LaunchConfigurationEquals('use_rviz', 'true'),
-             arguments=["-d", PathJoinSubstitution([FindPackageShare("turtlebot3_description"), "config", "basic_purple.rviz"])],),
+             arguments=["-d", PathJoinSubstitution([FindPackageShare("nuturtle_description"), "config", "basic_purple.rviz"])],),
+        
+        Node(package="robot_state_publisher",
+             executable="robot_state_publisher",
+             parameters=[
+               {"robot_description":
+                Command([TextSubstitution(text="xacro "),
+                          PathJoinSubstitution(
+                              [FindPackageShare("nuturtle_description"), "urdf", "turtlebot3_burger.urdf.xacro"])])}
+            ]
+            ),
     ])
