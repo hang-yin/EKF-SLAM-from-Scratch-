@@ -11,7 +11,7 @@ The rviz configuration is stored in /config/basic_purple.rviz
 
 from launch import LaunchDescription
 from launch_ros.actions import Node
-from launch.actions import DeclareLaunchArgument, SetLaunchConfiguration
+from launch.actions import DeclareLaunchArgument
 from launch.substitutions import PathJoinSubstitution
 from launch.conditions import LaunchConfigurationEquals
 from launch_ros.substitutions import FindPackageShare
