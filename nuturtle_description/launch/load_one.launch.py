@@ -17,11 +17,16 @@ from launch.conditions import LaunchConfigurationEquals
 from launch_ros.substitutions import FindPackageShare
 from launch.substitutions import TextSubstitution
 from launch.substitutions import Command
+from launch.substitutions import LaunchConfiguration
 
 def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument(name='use_rviz', default_value='true', description='Launch rviz'),
         DeclareLaunchArgument(name='use_jsp', default_value='true', description='Launch joint_state_publisher'),
+        DeclareLaunchArgument(name='color',
+                              default_value='purple',
+                              description='Color of the turtlebot base',
+                              choices=['purple', 'red', 'green', 'blue']),
         
         Node(package="joint_state_publisher",
              executable="joint_state_publisher",
@@ -39,7 +44,9 @@ def generate_launch_description():
                {"robot_description":
                 Command([TextSubstitution(text="xacro "),
                           PathJoinSubstitution(
-                              [FindPackageShare("nuturtle_description"), "urdf", "turtlebot3_burger.urdf.xacro"])])}
+                              [FindPackageShare("nuturtle_description"), "urdf", "turtlebot3_burger.urdf.xacro"]),
+                          TextSubstitution(text=" color:="),
+                          LaunchConfiguration('color'),])}
             ]
             ),
     ])

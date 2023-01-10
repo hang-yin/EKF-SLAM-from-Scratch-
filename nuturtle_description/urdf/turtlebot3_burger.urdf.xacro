@@ -3,6 +3,9 @@
   <xacro:include filename="$(find nuturtle_description)/urdf/common_properties.xacro"/>
   <xacro:include filename="$(find nuturtle_description)/urdf/turtlebot3_burger.gazebo.xacro"/>
 
+  <xacro:arg name="color" default="purple"/>
+  <xacro:property name="color" value="$(arg color)"/> 
+
   <xacro:property name="yaml_file" value="$(find nuturtle_description)/config/diff_params.yaml"/>
   <xacro:property name="props" value="${xacro.load_yaml(yaml_file)['/**']['ros__parameters']}"/>
   <xacro:property name="wheel_radius" value="${props['wheel_radius']}"/>
@@ -11,6 +14,10 @@
   <xacro:property name="motor_cmd_per_rad_sec" value="${props['motor_cmd_per_rad_sec']}"/>
   <xacro:property name="encoder_ticks_per_rad" value="${props['encoder_ticks_per_rad']}"/>
   <xacro:property name="collision_radius" value="${props['collision_radius']}"/>
+
+  <material name="purple">
+    <color rgba="0.3 0.16 0.52 1.0"/>
+  </material>
 
   <link name="base_footprint"/>
 
@@ -26,7 +33,7 @@
       <geometry>
         <mesh filename="package://nuturtle_description/meshes/burger_base.stl" scale="0.001 0.001 0.001"/>
       </geometry>
-      <material name="light_black"/>
+      <material name="${color}"/>
     </visual>
 
     <collision>
