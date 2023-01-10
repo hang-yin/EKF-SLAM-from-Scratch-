@@ -87,7 +87,7 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /purple/robot_description
+        Value: /green/robot_description
       Enabled: true
       Links:
         All Links Enabled: true
@@ -95,41 +95,41 @@ Visualization Manager:
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: Links in Alphabetic Order
-        purple/base_footprint:
+        green/base_footprint:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-        purple/base_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        purple/base_scan:
+        green/base_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        purple/caster_back_link:
+        green/base_scan:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        purple/imu_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        purple/wheel_left_link:
+        green/caster_back_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        purple/wheel_right_link:
+        green/imu_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        green/wheel_left_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        green/wheel_right_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
       Name: RobotModel
-      TF Prefix: "purple"
+      TF Prefix: "green"
       Update Interval: 0
       Value: true
       Visual Enabled: true
@@ -138,21 +138,21 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: true
-        purple/base_footprint:
+        green/base_footprint:
           Value: true
-        purple/base_link:
+        green/base_link:
           Value: true
-        purple/base_scan:
+        green/base_scan:
           Value: true
-        purple/caster_back_link:
+        green/caster_back_link:
           Value: true
-        purple/imu_link:
+        green/imu_link:
           Value: true
-        purple/odom:
+        green/odom:
           Value: true
-        purple/wheel_left_link:
+        green/wheel_left_link:
           Value: true
-        purple/wheel_right_link:
+        green/wheel_right_link:
           Value: true
       Marker Scale: 1
       Name: TF
@@ -211,12 +211,12 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /purple/odom
+        Value: /green/odom
       Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
-    Fixed Frame: /purple/base_footprint
+    Fixed Frame: /green/base_footprint
     Frame Rate: 30
   Name: root
   Tools:

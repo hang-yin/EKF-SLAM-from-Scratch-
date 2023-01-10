@@ -11,7 +11,7 @@ The rviz configuration is stored in /config/basic_purple.rviz
 
 from launch import LaunchDescription
 from launch_ros.actions import Node
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, SetLaunchConfiguration
 from launch.substitutions import PathJoinSubstitution
 from launch.conditions import LaunchConfigurationEquals
 from launch_ros.substitutions import FindPackageShare
@@ -26,27 +26,37 @@ def generate_launch_description():
         DeclareLaunchArgument(name='color',
                               default_value='purple',
                               description='Color of the turtlebot base',
-                              choices=['purple', 'red', 'green', 'blue']),
-        
+                              choices=['purple', 'red', 'green', 'blue', '']),
+
         Node(package="joint_state_publisher",
              executable="joint_state_publisher",
              arguments=[PathJoinSubstitution([FindPackageShare("nuturtle_description"), "urdf", "turtlebot3_burger.urdf.xacro"])],
-             condition=LaunchConfigurationEquals('use_jsp', 'true')),
+             condition=LaunchConfigurationEquals('use_jsp', 'true'),
+             namespace=LaunchConfiguration('color')),
         
         Node(package="rviz2",
              executable="rviz2",
              condition=LaunchConfigurationEquals('use_rviz', 'true'),
-             arguments=["-d", PathJoinSubstitution([FindPackageShare("nuturtle_description"), "config", "basic_purple.rviz"])],),
+             arguments=["-d", [PathJoinSubstitution([FindPackageShare("nuturtle_description"),
+                                                    "config",
+                                                    "basic_"]),
+							   LaunchConfiguration('color'),
+							   TextSubstitution(text=".rviz")]],
+             namespace=LaunchConfiguration('color')),
         
         Node(package="robot_state_publisher",
              executable="robot_state_publisher",
+             namespace=LaunchConfiguration('color'),
              parameters=[
                {"robot_description":
                 Command([TextSubstitution(text="xacro "),
                           PathJoinSubstitution(
                               [FindPackageShare("nuturtle_description"), "urdf", "turtlebot3_burger.urdf.xacro"]),
                           TextSubstitution(text=" color:="),
-                          LaunchConfiguration('color'),])}
+                          LaunchConfiguration('color'),])},
+               {"frame_prefix":
+                [LaunchConfiguration('color'),
+                 TextSubstitution(text="/")]}
             ]
             ),
     ])
