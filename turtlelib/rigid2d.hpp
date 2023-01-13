@@ -94,6 +94,12 @@ namespace turtlelib
     /// \brief a rigid body transformation in 2 dimensions
     class Transform2D
     {
+
+    private:
+        double x = 0.0;
+        double y = 0.0;
+        double theta = 0.0;
+
     public:
         /// \brief Create an identity transformation
         Transform2D();
@@ -117,6 +123,10 @@ namespace turtlelib
         /// \return a vector in the new coordinate system
         Vector2D operator()(Vector2D v) const;
 
+        /// \brief apply a transformation to a Twist2D
+        /// \param twist - the twist to transform
+        /// \return a twist in the new coordinate system
+        Twist2D operator()(Twist2D twist) const;
 
         /// \brief invert the transformation
         /// \return the inverse transformation. 
@@ -163,6 +173,31 @@ namespace turtlelib
     /// \return the composition of the two transforms
     /// HINT: This function should be implemented in terms of *=
     Transform2D operator*(Transform2D lhs, const Transform2D & rhs);
+
+    /// \brief A Twist in 2D
+    struct Twist2D
+    {
+        /// \brief the rotational component
+        double w = 0.0;
+        /// \brief the translational component
+        double x = 0.0;
+        double y = 0.0;
+    };
+
+    /// \brief output a Twist2D as [x y w]
+    /// \param os - the output stream
+    /// \param t - the twist to print
+    std::ostream & operator<<(std::ostream & os, const Twist2D & t);
+
+    /// \brief input a Twist2D
+    /// \param is - the input stream
+    /// \param t [out] - the twist to read
+    std::istream & operator>>(std::istream & is, Twist2D & t);
+
+    /// \brief normalize a Vector2D
+    /// \param v - the vector to normalize
+    /// \return a normalized version of the vector
+    Vector2D normalize(Vector2D v);
 
 
 
