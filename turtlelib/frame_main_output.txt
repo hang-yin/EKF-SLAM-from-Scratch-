@@ -1,0 +1,21 @@
+Enter transform T_{a,b}:
+deg: 45 x: 1 y: 1
+Enter transform T_{b,c}:
+deg: 90 x: 0 y: 0
+T_{a_b} = deg: 45 x: 1 y: 1
+T_{b_a} = deg: -45 x: -1.41421 y: -1.11022e-16
+T_{b_c} = deg: 90 x: 0 y: 0
+T_{c_b} = deg: -90 x: -0 y: 0
+T_{a_c} = deg: 135 x: 1 y: 1
+T_{c_a} = deg: -135 x: -1.11022e-16 y: 1.41421
+Enter vector v_b:
+1 0
+v_bhat: [1 0]
+v_a: [1.70711 1.70711]
+v_b: [1 0]
+v_c: [6.12323e-17 -1]
+Enter twist V_b:
+1 0 1
+V_a [1 0.292893 -0.292893]
+V_b [1 0 1]
+V_c [1 1 6.12323e-17]
