@@ -8,13 +8,27 @@ A library for handling transformations in SE(2) and other turtlebot-related math
 # Conceptual Questions
 1. We need to be able to ~normalize~ Vector2D objects (i.e., find the unit vector in the direction of a given Vector2D):
    - Propose three different designs for implementing the ~normalize~ functionality
-
    - Discuss the pros and cons of each proposed method, in light of the C++ Core Guidelines.
-
    - Which of the methods would you implement and why?
 
-2. What is the difference between a class and a struct in C++?
 
+   Design 1: A standalone normalize function
+   - Pros: the independence of this function makes it easier to be tested and reused
+   - Cons: you lose control of private fields for the Vector2D object you are trying to normalize; your code become less structured as this function is now not encapsulated in any classes
+
+   Design 2: A member function within the Vector2D class
+   - Pros: encapsulation gives you control over the Vector2D objects and their behaviors
+   - Cons: if we want to use the normalize functionality outside of this class, we need to write separate functions with the exact same logic
+
+   Design 3: Operator overload for the Vector2D class
+   - Pros: makes normalize call look clean; encapsulation is maintained
+   - Cons: it might be counter-intuitive to use an operator overload for normalization
+
+   At this point, I'm implementing the normalize functionality as a standalone function for testing purposes. But given time and the necessity to refine my library, I would probably implement it within a class so that the function is encapsulated. 
+
+2. What is the difference between a class and a struct in C++?
+   - While a class has both data and methods, a struct usually only contains data
+   - The data within a class is usually not accessible by users for encapsulation purposes, but data within a struct is always accessible to users
 
 3. Why is Vector2D a struct and Transform2D a Class (refer to at least 2 specific C++ core guidelines in your answer)?
 
