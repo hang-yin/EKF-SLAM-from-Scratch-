@@ -59,7 +59,7 @@ int main(){
     turtlelib::Twist2D V_a = T_ab(V_b);
     cout << "V_a " << V_a << endl;
     cout << "V_b " << V_b << endl;
-    turtlelib::Twist2D V_c = T_bc(V_b);
+    turtlelib::Twist2D V_c = T_cb(V_b);
     cout << "V_c " << V_c << endl;
 
 }

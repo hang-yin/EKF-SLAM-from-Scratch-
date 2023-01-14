@@ -122,7 +122,7 @@ namespace turtlelib
     }
 
     std::ostream & operator<<(std::ostream & os, const Twist2D & t){
-        os << "[" << t.x << " " << t.y << " " << t.w << "]";
+        os << "[" << t.w << " " << t.x << " " << t.y << "]";
         return os;
     }
 
@@ -131,11 +131,11 @@ namespace turtlelib
         if (first_char == '[')
         {
             is.get();
-            is >> t.x >> t.y >> t.w;
+            is >> t.w >> t.x >> t.y;
         }
         else
         {
-            is >> t.x >> t.y >> t.w;
+            is >> t.w >> t.x >> t.y;
         }
         return is;
     }
