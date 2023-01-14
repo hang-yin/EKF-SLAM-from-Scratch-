@@ -5,6 +5,7 @@
 
 
 #include<iosfwd> // contains forward definitions for iostream objects
+#include<cmath> // contains standard C math library
 
 namespace turtlelib
 {
@@ -91,6 +92,16 @@ namespace turtlelib
     /// HINT: this function can be written in under 20 lines and uses only std::peek(), std::get(), istream::operator>>() and a little logic
     std::istream & operator>>(std::istream & is, Vector2D & v);
 
+    /// \brief A Twist in 2D
+    struct Twist2D
+    {
+        /// \brief the rotational component
+        double w = 0.0;
+        /// \brief the translational component
+        double x = 0.0;
+        double y = 0.0;
+    };
+
     /// \brief a rigid body transformation in 2 dimensions
     class Transform2D
     {
@@ -173,16 +184,6 @@ namespace turtlelib
     /// \return the composition of the two transforms
     /// HINT: This function should be implemented in terms of *=
     Transform2D operator*(Transform2D lhs, const Transform2D & rhs);
-
-    /// \brief A Twist in 2D
-    struct Twist2D
-    {
-        /// \brief the rotational component
-        double w = 0.0;
-        /// \brief the translational component
-        double x = 0.0;
-        double y = 0.0;
-    };
 
     /// \brief output a Twist2D as [x y w]
     /// \param os - the output stream

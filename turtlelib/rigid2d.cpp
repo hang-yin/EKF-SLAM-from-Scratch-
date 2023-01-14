@@ -40,8 +40,8 @@ namespace turtlelib
     Twist2D Transform2D::operator()(Twist2D twist) const{
         Twist2D temp;
         temp.w = twist.w;
-        temp.x = twist.x*cos(theta) - twist.y*sin(theta);
-        temp.y = twist.x*sin(theta) + twist.y*cos(theta);
+        temp.x = twist.x*cos(theta) - twist.y*sin(theta) + y*twist.w;
+        temp.y = twist.x*sin(theta) + twist.y*cos(theta) - x*twist.w;
         return temp;
     }
 
@@ -58,6 +58,10 @@ namespace turtlelib
         y = y + rhs.x*sin(theta) + rhs.y*cos(theta);
         theta = theta + rhs.theta;
         return *this;
+    }
+
+    Transform2D operator*(Transform2D lhs, const Transform2D & rhs){
+        return lhs *= rhs;
     }
 
     Vector2D Transform2D::translation() const{
@@ -101,23 +105,19 @@ namespace turtlelib
     std::istream & operator>>(std::istream & is, Transform2D & tf)
     {
         char first_char = is.peek();
-        char temp[10];
         Vector2D temp_v;
         double temp_theta;
+
         if (first_char =='d'){
-            is.get(temp, 6);
-            is >> temp_theta;
-            temp_theta = deg2rad(temp_theta);
-            is.get(temp, 4);
-            is >> temp_v.x;
-            is.get(temp, 4);
-            is >> temp_v.y;
-            tf = Transform2D(temp_v, temp_theta);
+            std::string temp1, temp2, temp3;
+            is >> temp1 >> temp_theta >> temp2 >> temp_v.x >> temp3 >> temp_v.y;
+            tf = Transform2D(temp_v, deg2rad(temp_theta));
         }
         else{
             is >> temp_theta >> temp_v.x >> temp_v.y;
             tf = Transform2D(temp_v, deg2rad(temp_theta));
         }
+        is.get();
         return is;
     }
 
