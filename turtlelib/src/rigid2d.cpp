@@ -1,6 +1,6 @@
 // implement functions defined in rigid2d.hpp
 
-#include "rigid2d.hpp"
+#include "turtlelib/rigid2d.hpp"
 #include <iostream>
 #include <cmath>
 
