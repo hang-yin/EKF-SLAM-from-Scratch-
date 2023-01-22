@@ -6,8 +6,7 @@
 
     <node pkg="nusim"
           exec="nusim_node"
-          name="nusim_node"
-          args="-d $(find-pkg-share nusim)/config/basic_world.yaml"/>
+          name="nusim_node"/>
     
     <node pkg="rviz2"
           exec="rviz2"
