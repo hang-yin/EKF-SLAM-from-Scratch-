@@ -4,7 +4,7 @@
 #include "tf2_ros/transform_broadcaster.h"
 #include "tf2/LinearMath/Quaternion.h"
 #include "geometry_msgs/msg/transform_stamped.hpp"
-#include "srv/Teleport.srv"
+#include "nusim/srv/Teleport.srv"
 #include <chrono>
 #include <functional>
 #include <memory>
@@ -34,23 +34,10 @@ public:
 	timer_ = this->create_wall_timer(1s/rate_, std::bind(&NuSimNode::timer_callback, this));
 
 	// Create reset service of empty type
-	reset_srv_ = this->create_service<std_srvs::srv::Empty>("~/reset",
-	  [this](const std::shared_ptr<rmw_request_id_t> request_header,
-		const std::shared_ptr<std_srvs::srv::Empty::Request> request,
-		std::shared_ptr<std_srvs::srv::Empty::Response> response)
-	  {
-		(void)request_header;
-		(void)request;
-		// Reset timestep to zero
-		timestep_ = 0;
-		// Reset transform
-		transform_stamped_.transform.translation.x = x0_;
-		transform_stamped_.transform.translation.y = y0_;
-		transform_stamped_.transform.rotation.x = q0_.x();
-		transform_stamped_.transform.rotation.y = q0_.y();
-		transform_stamped_.transform.rotation.z = q0_.z();
-		transform_stamped_.transform.rotation.w = q0_.w();
-	  });
+	reset_srv_ = this->create_service<std_srvs::srv::Empty>("~/reset", std::bind(&NuSimNode::reset_callback, this));
+
+	// Create teleport service of Teleport type
+	teleport_srv_ = this->create_service<nusim::srv::Teleport>("~/teleport", std::bind(&NuSimNode::teleport_callback, this));
 	
 	// Set initial pose
 	x0_ = x0;
@@ -73,8 +60,7 @@ public:
   }
 
 private:
-	void timer_callback()
-	{
+	void timer_callback(){
 		// Publish timestep
 		auto msg = std_msgs::msg::UInt64();
 		msg.data = timestep_;
@@ -84,6 +70,30 @@ private:
 		broadcaster_.sendTransform(transformStamped_);
 		// Increment timestep
 		timestep_++;
+	}
+	void reset_callback(const std::shared_ptr<std_srvs::srv::Empty::Request> request,
+						std::shared_ptr<std_srvs::srv::Empty::Response> response){
+		// Reset timestep to zero
+		timestep_ = 0;
+		// Reset transform
+		transform_stamped_.transform.translation.x = x0_;
+		transform_stamped_.transform.translation.y = y0_;
+		transform_stamped_.transform.rotation.x = q0_.x();
+		transform_stamped_.transform.rotation.y = q0_.y();
+		transform_stamped_.transform.rotation.z = q0_.z();
+		transform_stamped_.transform.rotation.w = q0_.w();
+	}
+	void teleport_callback(const std::shared_ptr<nusim::srv::Teleport::Request> request,
+						   std::shared_ptr<nusim::srv::Teleport::Response> response){
+		// Set transform
+		transform_stamped_.transform.translation.x = request->x;
+		transform_stamped_.transform.translation.y = request->y;
+		tf2::Quaternion q;
+		q.setRPY(0, 0, request->theta);
+		transform_stamped_.transform.rotation.x = q.x();
+		transform_stamped_.transform.rotation.y = q.y();
+		transform_stamped_.transform.rotation.z = q.z();
+		transform_stamped_.transform.rotation.w = q.w();
 	}
 	rclcpp::TimerBase::SharedPtr timer_;
 	rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr timestep_pub_;
