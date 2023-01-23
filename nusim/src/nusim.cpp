@@ -1,3 +1,4 @@
+#include "visualization_msgs/msg/marker_array.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/u_int64.hpp"
 #include "std_srvs/srv/empty.hpp"
@@ -9,14 +10,62 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <vector>
 
 using namespace std::chrono_literals;
 
 class NuSimNode : public rclcpp::Node
 {
 public:
-  NuSimNode(double rate, float x0, float y0, float theta0) : Node("nusim")
+  NuSimNode(double rate,
+  			float x0,
+			float y0,
+			float theta0,
+			std::vector<float> obstacles_x,
+			std::vector<float> obstacles_y,
+			float obstacles_r) : Node("nusim")
   {
+
+	// Check obstacles input, if length of vectors are not equal, exit node
+	if(obstacles_x.size() != obstacles_y.size()) {
+	  RCLCPP_ERROR(this->get_logger(), "Length of obstacles vectors are not equal");
+	  rclcpp::shutdown();
+	}
+
+	// Check obstacles input, if radius is negative, exit node
+	if (obstacles_r < 0) {
+	  RCLCPP_ERROR(this->get_logger(), "Radius of obstacles cannot be negative");
+	  rclcpp::shutdown();
+	}
+
+	// Create publisher for obstacles
+	obstacles_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("~/obstacles", 10);
+
+	// Initialize marker array
+	marker_array_.markers.resize(obstacles_x.size());
+	for (int i = 0; i < int(obstacles_x.size()); i++) {
+	  marker_array_.markers[i].header.frame_id = "nusim/world";
+	  marker_array_.markers[i].header.stamp = this->get_clock()->now();
+	  marker_array_.markers[i].ns = "obstacles";
+	  marker_array_.markers[i].id = i;
+	  marker_array_.markers[i].type = visualization_msgs::msg::Marker::CYLINDER;
+	  marker_array_.markers[i].action = visualization_msgs::msg::Marker::ADD;
+	  marker_array_.markers[i].pose.position.x = obstacles_x[i];
+	  marker_array_.markers[i].pose.position.y = obstacles_y[i];
+	  marker_array_.markers[i].pose.position.z = 0;
+	  marker_array_.markers[i].pose.orientation.x = 0.0;
+	  marker_array_.markers[i].pose.orientation.y = 0.0;
+	  marker_array_.markers[i].pose.orientation.z = 0.0;
+	  marker_array_.markers[i].pose.orientation.w = 1.0;
+	  marker_array_.markers[i].color.a = 1.0;
+	  marker_array_.markers[i].color.r = 1.0;
+	  marker_array_.markers[i].color.g = 0.0;
+	  marker_array_.markers[i].color.b = 0.0;
+	  marker_array_.markers[i].scale.x = 2*obstacles_r;
+	  marker_array_.markers[i].scale.y = 2*obstacles_r;
+	  marker_array_.markers[i].scale.z = 0.25;
+	}
+
 	// Initialize timestep to zero
 	timestep_ = 0;
 
@@ -66,6 +115,7 @@ public:
 	transformStamped_.transform.rotation.y = q0_.y();
 	transformStamped_.transform.rotation.z = q0_.z();
 	transformStamped_.transform.rotation.w = q0_.w();
+
   }
 
 private:
@@ -77,6 +127,8 @@ private:
 		// Broadcast transform
 		transformStamped_.header.stamp = this->get_clock()->now();
 		broadcaster_->sendTransform(transformStamped_);
+		// Publish marker array
+		obstacles_pub_->publish(marker_array_);
 		// Increment timestep
 		timestep_++;
 	}
@@ -110,6 +162,7 @@ private:
 	}
 	rclcpp::TimerBase::SharedPtr timer_;
 	rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr timestep_pub_;
+	rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr obstacles_pub_;
 	rclcpp::Service<std_srvs::srv::Empty>::SharedPtr reset_srv_;
 	rclcpp::Service<nusim::srv::Teleport>::SharedPtr teleport_srv_;
 	// tf2_ros::TransformBroadcaster broadcaster_;
@@ -121,6 +174,7 @@ private:
 	float y0_;
 	float theta0_;
 	tf2::Quaternion q0_;
+	visualization_msgs::msg::MarkerArray marker_array_;
 
 };
 
@@ -128,7 +182,15 @@ int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
   double rate = 0;
-  rclcpp::spin(std::make_shared<NuSimNode>(rate, -0.6, 0.8, 1.57));
+  std::vector<float> obstacles_x = {-0.6, 0.7, 0.5};
+  std::vector<float> obstacles_y = {-0.8, -0.7, 0.9};
+  rclcpp::spin(std::make_shared<NuSimNode>(rate,
+  										   -0.6,
+										   0.8,
+										   1.57,
+										   obstacles_x,
+										   obstacles_y,
+										   0.038));
   rclcpp::shutdown();
   return 0;
 }
