@@ -17,21 +17,26 @@ using namespace std::chrono_literals;
 class NuSimNode : public rclcpp::Node
 {
 public:
-  NuSimNode(double rate,
-  			float x0,
-			float y0,
-			float theta0,
-			std::vector<float> obstacles_x,
-			std::vector<float> obstacles_y,
-			float obstacles_r) : Node("nusim")
+  NuSimNode() : Node("nusim")
   {
+	// Declare parameters
+	this->declare_parameter("rate", 200.0);
+	this->declare_parameter("x0", 0.0);
+	this->declare_parameter("y0", 0.0);
+	this->declare_parameter("theta0", 0.0);
+	this->declare_parameter("obstacles_x", std::vector<double>());
+	this->declare_parameter("obstacles_y", std::vector<double>());
+	this->declare_parameter("obstacles_r", 0.0);
 
 	// Check obstacles input, if length of vectors are not equal, exit node
+	std::vector<double> obstacles_x = this->get_parameter("obstacles_x").as_double_array();
+	std::vector<double> obstacles_y = this->get_parameter("obstacles_y").as_double_array();
 	if(obstacles_x.size() != obstacles_y.size()) {
 	  RCLCPP_ERROR(this->get_logger(), "Length of obstacles vectors are not equal");
 	  rclcpp::shutdown();
 	}
 
+	float obstacles_r = this->get_parameter("obstacles_r").as_double();
 	// Check obstacles input, if radius is negative, exit node
 	if (obstacles_r < 0) {
 	  RCLCPP_ERROR(this->get_logger(), "Radius of obstacles cannot be negative");
@@ -73,9 +78,8 @@ public:
 	timestep_pub_ = this->create_publisher<std_msgs::msg::UInt64>("~/timestep", 10);
 
 	// Set rate
-	if(rate > 0) {
-	  rate_ = rate;
-	} else {
+	rate_ = this->get_parameter("rate").as_double();
+	if(rate_ <= 0) {
 	  rate_ = 200.0;
 	}
 
@@ -97,9 +101,9 @@ public:
 																		 std::placeholders::_2));
 	
 	// Set initial pose
-	x0_ = x0;
-	y0_ = y0;
-	theta0_ = theta0;
+	x0_ = this->get_parameter("x0").as_double();
+	y0_ = this->get_parameter("y0").as_double();
+	theta0_ = this->get_parameter("theta0").as_double();
 	q0_.setRPY(0, 0, theta0_);
 
 	// Create transform broadcaster
@@ -181,16 +185,9 @@ private:
 int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
-  double rate = 0;
   std::vector<float> obstacles_x = {-0.6, 0.7, 0.5};
   std::vector<float> obstacles_y = {-0.8, -0.7, 0.9};
-  rclcpp::spin(std::make_shared<NuSimNode>(rate,
-  										   -0.6,
-										   0.8,
-										   1.57,
-										   obstacles_x,
-										   obstacles_y,
-										   0.038));
+  rclcpp::spin(std::make_shared<NuSimNode>());
   rclcpp::shutdown();
   return 0;
 }

@@ -12,5 +12,3 @@ Simulation and visualization environnment
  - obstacles_x: list of x coordinates of obstacles
  - obstacles_y: list of y coordinates of obstacles
  - obstacles_r: radius of obstacles
-
-Worked With nobody
