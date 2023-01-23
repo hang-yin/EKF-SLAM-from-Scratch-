@@ -3,4 +3,6 @@
 * Winter 2023
 # Package List
 This repository consists of several ROS packages
-- <PACKAGE1> - <one sentence description>
+- Robot Description - displays turtlebot3 models in rviz
+- Turtle Library - performs 2D rigid body transformations and other relevant functionalities
+- Simulation - provides a simulated robot environment with robots and obstacles
