@@ -99,6 +99,7 @@ namespace turtlelib
         double w = 0.0;
         /// \brief the translational component
         double x = 0.0;
+        /// \brief the translational component
         double y = 0.0;
     };
 
@@ -126,7 +127,7 @@ namespace turtlelib
         /// \brief Create a transformation with a translational and rotational
         /// component
         /// \param trans - the translation
-        /// \param rot - the rotation, in radians
+        /// \param radians - the rotation, in radians
         Transform2D(Vector2D trans, double radians);
 
         /// \brief apply a transformation to a Vector2D
