@@ -42,6 +42,20 @@ namespace turtlelib
         return rad * 180.0 / PI;
     }
 
+    /// \brief turns any angle into the equivalent angle in the interval (-pi, pi]
+    /// \param angle - the angle to normalize, in radians
+    /// \return the equivalent angle in the interval (-pi, pi]
+    constexpr double normalize_angle(double rad){
+        double temp = std::fmod(rad, 2*PI);
+        if(temp > PI){
+            temp -= 2*PI;
+        }
+        else if(temp <= -PI){
+            temp += 2*PI;
+        }
+        return temp;
+    }
+
     /// static_assertions test compile time assumptions.
     /// You should write at least one more test for each function
     /// You should also purposely (and temporarily) make one of these tests fail
@@ -200,8 +214,6 @@ namespace turtlelib
     /// \param v - the vector to normalize
     /// \return a normalized version of the vector
     Vector2D normalize(Vector2D v);
-
-
 
 }
 

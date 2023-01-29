@@ -346,3 +346,21 @@ TEST_CASE("operator >>","[transform]"){ //Ghosh, Ritika
    REQUIRE(turtlelib::almost_equal(Ttest1.rotation(), turtlelib::PI/2));
    REQUIRE(turtlelib::almost_equal(Ttest2.rotation(), turtlelib::PI/4));
 }
+
+// test case for normalize_angle function
+// test this function with the following input: pi, -pi, 0, -pi/4, 3pi/2, -5pi/2
+TEST_CASE("normalize_angle function", "[transform]") { //Yin, Hang
+   double testdeg1, testdeg2, testdeg3, testdeg4, testdeg5, testdeg6;
+   testdeg1 = turtlelib::PI;
+   testdeg2 = -turtlelib::PI;
+   testdeg3 = 0;
+   testdeg4 = -turtlelib::PI/4;
+   testdeg5 = 3*turtlelib::PI/2;
+   testdeg6 = -5*turtlelib::PI/2;
+   REQUIRE(turtlelib::almost_equal(turtlelib::normalize_angle(testdeg1), turtlelib::PI, 1.0e-5));
+   REQUIRE(turtlelib::almost_equal(turtlelib::normalize_angle(testdeg2), turtlelib::PI, 1.0e-5));
+   REQUIRE(turtlelib::almost_equal(turtlelib::normalize_angle(testdeg3), 0, 1.0e-5));
+   REQUIRE(turtlelib::almost_equal(turtlelib::normalize_angle(testdeg4), -turtlelib::PI/4, 1.0e-5));
+   REQUIRE(turtlelib::almost_equal(turtlelib::normalize_angle(testdeg5), -turtlelib::PI/2, 1.0e-5));
+   REQUIRE(turtlelib::almost_equal(turtlelib::normalize_angle(testdeg6), -turtlelib::PI/2, 1.0e-5));
+}
