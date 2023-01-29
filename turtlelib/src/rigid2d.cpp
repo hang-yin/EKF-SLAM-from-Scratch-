@@ -148,4 +148,50 @@ namespace turtlelib
         return temp;
     }
 
+    double Vector2D::dot(Vector2D v1, Vector2D v2){
+        return v1.x*v2.x + v1.y*v2.y;
+    }
+
+    double Vector2D::magnitude(Vector2D v){
+        return sqrt(v.x*v.x + v.y*v.y);
+    }
+
+    double Vector2D::angle(Vector2D v1, Vector2D v2){
+        return acos(dot(v1, v2)/(magnitude(v1)*magnitude(v2)));
+    }
+
+    Vector2D & Vector2D::operator+=(const Vector2D & v){
+        x += v.x;
+        y += v.y;
+        return *this;
+    }
+
+    Vector2D & Vector2D::operator-=(const Vector2D & v){
+        x -= v.x;
+        y -= v.y;
+        return *this;
+    }
+
+    Vector2D & Vector2D::operator*=(const double s){
+        x *= s;
+        y *= s;
+        return *this;
+    }
+
+    Vector2D operator+(Vector2D v1, Vector2D v2){
+        return v1 += v2;
+    }
+
+    Vector2D operator-(Vector2D v1, Vector2D v2){
+        return v1 -= v2;
+    }
+
+    Vector2D operator*(Vector2D v, double s){
+        return v *= s;
+    }
+
+    Vector2D operator*(double s, Vector2D v){
+        return v *= s;
+    }
+
 }

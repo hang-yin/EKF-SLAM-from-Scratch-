@@ -76,9 +76,59 @@ namespace turtlelib
 
         /// \brief the y coordinate
         double y = 0.0;
+
+        /// \brief += operator overload for Vector2D
+        /// \param v - the vector to add
+        /// \return a reference to the modified vector
+        Vector2D & operator+=(const Vector2D & v);
+
+        /// \brief -= operator overload for Vector2D
+        /// \param v - the vector to subtract
+        /// \return a reference to the modified vector
+        Vector2D & operator-=(const Vector2D & v);
+
+        /// \brief *= operator overload for Vector2D
+        /// \param s - the scalar to multiply by
+        /// \return a reference to the modified vector
+        Vector2D & operator*=(double s);
+
+        /// \brief dot product of two vectors
+        /// \param v1 - the first vector
+        /// \param v2 - the second vector
+        /// \return the dot product of the two vectors
+        double dot(Vector2D v1, Vector2D v2);
+
+        /// \brief magnitude of a vector
+        /// \param v - the vector
+        /// \return the magnitude of the vector
+        double magnitude(Vector2D v);
+
+        /// \brief compute the angle between two vectors
+        /// \param v1 - the first vector
+        /// \param v2 - the second vector
+        /// \return the angle between the two vectors
+        double angle(Vector2D v1, Vector2D v2);
     };
 
+    /// \brief + operator overload for Vector2D
+    /// \param v - the vector to add
+    /// \return a new vector that is the sum of the two vectors
+    Vector2D operator+(Vector2D v1, Vector2D v2);
 
+    /// \brief - operator overload for Vector2D
+    /// \param v - the vector to subtract
+    /// \return a new vector that is the difference of the two vectors
+    Vector2D operator-(Vector2D v1, Vector2D v2);
+
+    /// \brief * operator overload for Vector2D
+    /// \param s - the scalar to multiply by
+    /// \return a new vector that is the product of the vector and the scalar
+    Vector2D operator*(Vector2D v, double s);
+
+    /// \brief * operator overload for Vector2D, in another order
+    /// \param s - the scalar to multiply by
+    /// \return a new vector that is the product of the vector and the scalar
+    Vector2D operator*(double s, Vector2D v);
 
     /// \brief output a 2 dimensional vector as [xcomponent ycomponent]
     /// os - stream to output to
