@@ -1,8 +1,23 @@
 cmake_minimum_required(VERSION 3.9)
 project(turtlelib)
 
+# Add the source files for the turtlelib library
+set(TURTLE_SOURCES
+    src/rigid2d.cpp
+)
+
+# Add the header files for the turtlelib library
+set(TURTLE_HEADERS
+    include/turtlelib/rigid2d.hpp
+)
+
+# Add the source file for the frame_main executable
+set(FRAME_MAIN_SOURCES
+    src/frame_main.cpp
+)
+
 # create the turtlelib library
-add_library(turtlelib src/rigid2d.cpp)
+add_library(turtlelib ${TURTLE_SOURCES} ${TURTLE_HEADERS})
 # The add_library function just added turtlelib as a "target"
 # A "target" is a name that CMake uses to refer to some type of output
 # In this case it is a library but it could also be an executable or some other items
@@ -26,6 +41,19 @@ target_compile_options(${PROJECT_NAME} PUBLIC -Wall -Wextra -Wpedantic)
 add_executable(frame_main src/frame_main.cpp)
 target_link_libraries(frame_main ${PROJECT_NAME})
 
+install(
+    TARGETS ${PROJECT_NAME} frame_main
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+    RUNTIME DESTINATION bin
+    INCLUDES DESTINATION include/turtlelib
+    EXPORT ${PROJECT_NAME}-targets
+)
+
+install(
+    FILES ${TURTLE_HEADERS}
+    DESTINATION include/turtlelib
+)
 
 # CMake also has the ability to generate doxygen documentation
 find_package(Doxygen)
