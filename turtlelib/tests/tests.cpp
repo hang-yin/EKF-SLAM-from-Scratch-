@@ -364,3 +364,31 @@ TEST_CASE("normalize_angle function", "[transform]") { //Yin, Hang
    REQUIRE(turtlelib::almost_equal(turtlelib::normalize_angle(testdeg5), -turtlelib::PI/2, 1.0e-5));
    REQUIRE(turtlelib::almost_equal(turtlelib::normalize_angle(testdeg6), -turtlelib::PI/2, 1.0e-5));
 }
+
+// test case for integrate_twist function
+// test this function with a pure translation, a pure rotation, and a combination of translation and rotation
+TEST_CASE("integrate_twist function", "[transform]") { //Yin, Hang
+   turtlelib::Twist2D twisttest1, twisttest2, twisttest3;
+   twisttest1.x = 1;
+   twisttest1.y = 0;
+   twisttest1.w = 0;
+   twisttest2.x = 0;
+   twisttest2.y = 0;
+   twisttest2.w = turtlelib::PI/2;
+   twisttest3.x = 1;
+   twisttest3.y = 1;
+   twisttest3.w = turtlelib::PI/4;
+   turtlelib::Transform2D tranans1, tranans2, tranans3;
+   tranans1 = turtlelib::integrate_twist(twisttest1);
+   tranans2 = turtlelib::integrate_twist(twisttest2);
+   tranans3 = turtlelib::integrate_twist(twisttest3);
+   REQUIRE(turtlelib::almost_equal(tranans1.translation().x, 1, 1.0e-5));
+   REQUIRE(turtlelib::almost_equal(tranans1.translation().y, 0, 1.0e-5));
+   REQUIRE(turtlelib::almost_equal(tranans1.rotation(), 0, 1.0e-5));
+   REQUIRE(turtlelib::almost_equal(tranans2.translation().x, 0, 1.0e-5));
+   REQUIRE(turtlelib::almost_equal(tranans2.translation().y, 0, 1.0e-5));
+   REQUIRE(turtlelib::almost_equal(tranans2.rotation(), turtlelib::PI/2, 1.0e-5));
+   REQUIRE(turtlelib::almost_equal(tranans3.translation().x, 0.527393, 1.0e-5));
+   REQUIRE(turtlelib::almost_equal(tranans3.translation().y, 1.27324, 1.0e-5));
+   REQUIRE(turtlelib::almost_equal(tranans3.rotation(), turtlelib::PI/4, 1.0e-5));
+}

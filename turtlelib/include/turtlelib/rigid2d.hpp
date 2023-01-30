@@ -265,6 +265,11 @@ namespace turtlelib
     /// \return a normalized version of the vector
     Vector2D normalize(Vector2D v);
 
+    /// \brief compute the transformation of a rigid body following a constant twist for one time unit
+    /// \param twist - the twist to follow
+    /// \return the transform that results from following the twist for one time unit
+    Transform2D integrate_twist(Twist2D twist);
+
 }
 
 #endif

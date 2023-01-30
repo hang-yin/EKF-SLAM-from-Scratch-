@@ -194,4 +194,23 @@ namespace turtlelib
         return v *= s;
     }
 
+    Transform2D integrate_twist(Twist2D twist){
+        // if this is a pure translation
+        if (almost_equal(twist.w, 0.0)){
+            Vector2D v;
+            v.x = twist.x;
+            v.y = twist.y;
+            return Transform2D(v, 0);
+        }
+        else{
+            Vector2D v;
+            v.x = twist.y/twist.w;
+            v.y = -twist.x/twist.w;
+            Transform2D Tsb(v);
+            Transform2D Tss(twist.w);
+            Transform2D Tbs = Tsb.inv();
+            return Tbs*Tss*Tsb;
+        }
+    }
+
 }
