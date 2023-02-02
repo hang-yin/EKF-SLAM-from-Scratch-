@@ -140,6 +140,16 @@ namespace turtlelib
         return is;
     }
 
+    Vector2D::Vector2D(){
+        x = 0.0;
+        y = 0.0;
+    }
+
+    Vector2D::Vector2D(double x, double y){
+        this->x = x;
+        this->y = y;
+    }
+
     Vector2D normalize(Vector2D v){
         Vector2D temp;
         double mag = sqrt(v.x*v.x + v.y*v.y);

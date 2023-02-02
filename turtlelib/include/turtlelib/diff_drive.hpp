@@ -34,10 +34,18 @@ namespace turtlelib{
         WheelAngles phi;
         WheelVelocities phi_dot;
         RobotState state;
+        double D = 1.0;
+        double R = 0.1;
     
     public: 
         /// \brief Default constructor
         DiffDrive();
+
+        /// \brief Constructor that takes in a robot state, wheel angles, and wheel velocities
+        /// \param state robot state
+        /// \param phi wheel angles
+        /// \param phi_dot wheel velocities
+        DiffDrive(RobotState state, WheelAngles phi, WheelVelocities phi_dot);
 
         /// \brief Set the robot state
         /// \param state robot state
