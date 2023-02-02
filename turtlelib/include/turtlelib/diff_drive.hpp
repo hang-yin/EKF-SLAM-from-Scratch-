@@ -1,6 +1,9 @@
-#include "rigid2d.hpp"
+#ifndef DIFFDRIVE_INCLUDE_GUARD_HPP
+#define DIFFDRIVE_INCLUDE_GUARD_HPP
 /// \file
 /// \brief Models kinematics of a differential drive robot
+
+#include "rigid2d.hpp"
 
 namespace turtlelib{
     /// \brief Robot configuration
@@ -71,3 +74,5 @@ namespace turtlelib{
 
     };
 }
+
+#endif
