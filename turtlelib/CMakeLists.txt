@@ -4,11 +4,13 @@ project(turtlelib)
 # Add the source files for the turtlelib library
 set(TURTLE_SOURCES
     src/rigid2d.cpp
+    src/diff_drive.cpp
 )
 
 # Add the header files for the turtlelib library
 set(TURTLE_HEADERS
     include/turtlelib/rigid2d.hpp
+    include/turtlelib/diff_drive.hpp
 )
 
 # Add the source file for the frame_main executable
