@@ -1,5 +1,6 @@
 #include "turtlelib/diff_drive.hpp"
 #include "turtlelib/rigid2d.hpp"
+#include <stdexcept>
 
 /// \file
 /// \brief Models kinematics of a differential drive robot
@@ -51,7 +52,10 @@ namespace turtlelib{
         // calculate new state
         RobotState state1;
         Transform2D T_bbprime = integrate_twist(twist);
-        Transform2D T_wb = Transform2D(Vector2D(this->state.x, this->state.y), state.theta);
+        Vector2D new_vector;
+        new_vector.x = this->state.x;
+        new_vector.y = this->state.y;
+        Transform2D T_wb = Transform2D(new_vector, state.theta);
         Transform2D T_wbprime = T_wb * T_bbprime;
         state1.x = T_wbprime.translation().x;
         state1.y = T_wbprime.translation().y;
@@ -62,15 +66,15 @@ namespace turtlelib{
     }
 
     WheelVelocities DiffDrive::inverseKinematics(Twist2D twist){
-        if (almost_equal(twist.y, 0.0)){
+        WheelVelocities phi_dot;
+        if (!almost_equal(twist.y, 0.0)){
             throw std::logic_error("This is an invalid twist!");
         }
         else{
-            WheelVelocities phi_dot;
             phi_dot.left = (twist.x - twist.w * D) / R;
             phi_dot.right = (twist.x + twist.w * D) / R;
-            return phi_dot;
         }
+        return phi_dot;
     }
 
 }

@@ -80,11 +80,6 @@ namespace turtlelib
         /// \brief Default constructor
         Vector2D() = default;
 
-        /// \brief Construct a Vector2D from x and y coordinates
-        /// \param x - the x coordinate
-        /// \param y - the y coordinate
-        Vector2D(double x, double y);
-
         /// \brief += operator overload for Vector2D
         /// \param v - the vector to add
         /// \return a reference to the modified vector

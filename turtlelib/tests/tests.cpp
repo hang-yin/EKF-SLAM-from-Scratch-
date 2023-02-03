@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include "turtlelib/rigid2d.hpp"
+#include "turtlelib/diff_drive.hpp"
 #include <iostream>
 #include <cmath>
 #include <sstream>
@@ -8,6 +9,7 @@
 #include <algorithm>
 #include <iterator>
 #include <fstream>
+#include <stdexcept>
 
 using namespace turtlelib;
 
@@ -391,4 +393,80 @@ TEST_CASE("integrate_twist function", "[transform]") { //Yin, Hang
    REQUIRE(turtlelib::almost_equal(tranans3.translation().x, 0.527393, 1.0e-5));
    REQUIRE(turtlelib::almost_equal(tranans3.translation().y, 1.27324, 1.0e-5));
    REQUIRE(turtlelib::almost_equal(tranans3.rotation(), turtlelib::PI/4, 1.0e-5));
+}
+
+// test case for DiffDrive class
+// test when robot drives forward with both forward and inverse kinematics
+TEST_CASE("DiffDrive class forward&backward", "[transform]") { //Yin, Hang
+   // test forward kinematics
+   turtlelib::DiffDrive test1;
+   turtlelib::RobotState state1;
+   state1.x = 0;
+   state1.y = 0;
+   state1.theta = 0;
+   test1.setState(state1);
+   turtlelib::WheelAngles test_angle1;
+   test_angle1.left = turtlelib::PI/2.0;
+   test_angle1.right = turtlelib::PI/2.0;
+   turtlelib::RobotState state2;
+   state2 = test1.forwardKinematics(test_angle1);
+   REQUIRE(turtlelib::almost_equal(state2.x, turtlelib::PI/20.0, 1.0e-5));
+   REQUIRE(turtlelib::almost_equal(state2.y, 0, 1.0e-5));
+   REQUIRE(turtlelib::almost_equal(state2.theta, 0, 1.0e-5));
+   // test inverse kinematics
+   turtlelib::Twist2D twisttest1;
+   twisttest1.x = turtlelib::PI/20.0;
+   twisttest1.y = 0;
+   twisttest1.w = 0;
+   turtlelib::WheelVelocities test_vel1;
+   test_vel1 = test1.inverseKinematics(twisttest1);
+   REQUIRE(turtlelib::almost_equal(test_vel1.left, turtlelib::PI/2.0, 1.0e-5));
+   REQUIRE(turtlelib::almost_equal(test_vel1.right, turtlelib::PI/2.0, 1.0e-5));
+}
+
+// test case for DiffDrive class
+// test when robot executes a pure rotation with both forward and inverse kinematics
+TEST_CASE("DiffDrive class pure rotation", "[transform]") { //Yin, Hang
+   // test forward kinematics
+   turtlelib::DiffDrive test2;
+   turtlelib::RobotState state3;
+   state3.x = 0;
+   state3.y = 0;
+   state3.theta = 0;
+   test2.setState(state3);
+   turtlelib::WheelAngles test_angle2;
+   test_angle2.left = turtlelib::PI/2.0;
+   test_angle2.right = -turtlelib::PI/2.0;
+   turtlelib::RobotState state4;
+   state4 = test2.forwardKinematics(test_angle2);
+   REQUIRE(turtlelib::almost_equal(state4.x, 0, 1.0e-5));
+   REQUIRE(turtlelib::almost_equal(state4.y, 0, 1.0e-5));
+   REQUIRE(turtlelib::almost_equal(state4.theta, -turtlelib::PI/20.0, 1.0e-5));
+   // test inverse kinematics
+   turtlelib::Twist2D twisttest2;
+   twisttest2.x = 0;
+   twisttest2.y = 0;
+   twisttest2.w = turtlelib::PI/2.0;
+   turtlelib::WheelVelocities test_vel2;
+   test_vel2 = test2.inverseKinematics(twisttest2);
+   REQUIRE(turtlelib::almost_equal(test_vel2.left, -5.0*turtlelib::PI, 1.0e-5));
+   REQUIRE(turtlelib::almost_equal(test_vel2.right, 5.0*turtlelib::PI, 1.0e-5));
+}
+
+// test case for DiffDrive class
+// test when robot is given an impossible twist to follow
+// the impossible twist is one that has a non-zero y component
+// the class should throw a logic_error exception
+TEST_CASE("DiffDrive class impossible twist", "[transform]") { //Yin, Hang
+   turtlelib::DiffDrive test3;
+   turtlelib::RobotState state5;
+   state5.x = 0;
+   state5.y = 0;
+   state5.theta = 0;
+   test3.setState(state5);
+   turtlelib::Twist2D twisttest3;
+   twisttest3.x = 0.0;
+   twisttest3.y = 1.0;
+   twisttest3.w = 0.0;
+   REQUIRE_THROWS_AS(test3.inverseKinematics(twisttest3), std::logic_error);
 }
