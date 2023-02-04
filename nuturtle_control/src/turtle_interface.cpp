@@ -63,6 +63,12 @@ public:
                                                                                       this,
                                                                                       std::placeholders::_1));
         
+        // Initialize diff_drive and wheel_velocities
+        diff_drive = turtlelib::DiffDrive();
+        wheel_velocities = turtlelib::WheelVelocities();
+        wheel_velocities.left = 0.0;
+        wheel_velocities.right = 0.0;
+        
     }
 private:
     // Declare publisher and subscriber objects
@@ -82,6 +88,9 @@ private:
     // Declare a diff_drive instance
     turtlelib::DiffDrive diff_drive;
 
+    // Declare other variables that need to be stored
+    turtlelib::WheelVelocities wheel_velocities;
+
     // Implement the callback functions
     void sensor_data_callback(const nuturtlebot_msgs::msg::SensorData::SharedPtr msg)
     {
@@ -89,14 +98,13 @@ private:
         sensor_msgs::msg::JointState joint_state_msg;
         // Set the header
         joint_state_msg.header.stamp = this->now();
-        joint_state_msg.header.frame_id = "base_link";
         // Set the name of the joints
-        joint_state_msg.name = {"left_wheel_joint", "right_wheel_joint"};
+        joint_state_msg.name = {"wheel_left_joint", "wheel_right_joint"};
         // Set the position of the joints
-        joint_state_msg.position = {msg->left_encoder, msg->right_encoder};
+        joint_state_msg.position = {msg->left_encoder * encoder_ticks_per_rad_,
+                                    msg->right_encoder * encoder_ticks_per_rad_};
         // Set the velocity of the joints
-        joint_state_msg.velocity = {msg->left_velocity, msg->right_velocity};
-        // Publish the message
+        joint_state_msg.velocity = {wheel_velocities.left, wheel_velocities.right};
         joint_states_pub_->publish(joint_state_msg);
     }
 
@@ -111,9 +119,10 @@ private:
         twist.x = msg->linear.x;
         twist.y = msg->linear.y;
         // Calculate inverse kinematics
-        turtlelib::WheelVelocities wheel_velocities = diff_drive.inverseKinematics(twist);
+        wheel_velocities = diff_drive.inverseKinematics(twist);
         // Set the left and right wheel velocities
-        wheel_commands_msg.left_velocity = wheel_velocities.left;
+        wheel_commands_msg.left_velocity = wheel_velocities.left / motor_cmd_per_rad_sec_;
+        wheel_commands_msg.right_velocity = wheel_velocities.right / motor_cmd_per_rad_sec_;
         // Publish the message
         wheel_commands_pub_->publish(wheel_commands_msg);
     }
