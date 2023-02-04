@@ -1,0 +1,5 @@
+repositories:
+  nuturtle-hang-yin:
+    type: git
+    url: git@github.com:ME495-Navigation/nuturtle-hang-yin.git
+    version: main

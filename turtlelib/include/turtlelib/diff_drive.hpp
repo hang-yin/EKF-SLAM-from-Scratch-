@@ -37,8 +37,9 @@ namespace turtlelib{
         WheelAngles phi;
         WheelVelocities phi_dot;
         RobotState state;
-        double D = 1.0;
-        double R = 0.1;
+        // following default parameters defined in nuturtle_description/diff_params.yaml
+        double D = 0.08;
+        double R = 0.033; 
     
     public: 
         /// \brief Default constructor

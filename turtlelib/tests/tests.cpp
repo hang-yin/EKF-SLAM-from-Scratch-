@@ -410,7 +410,7 @@ TEST_CASE("DiffDrive class forward&backward", "[transform]") { //Yin, Hang
    test_angle1.right = turtlelib::PI/2.0;
    turtlelib::RobotState state2;
    state2 = test1.forwardKinematics(test_angle1);
-   REQUIRE(turtlelib::almost_equal(state2.x, turtlelib::PI/20.0, 1.0e-5));
+   REQUIRE(turtlelib::almost_equal(state2.x, 0.0518363, 1.0e-5));
    REQUIRE(turtlelib::almost_equal(state2.y, 0, 1.0e-5));
    REQUIRE(turtlelib::almost_equal(state2.theta, 0, 1.0e-5));
    // test inverse kinematics
@@ -420,8 +420,8 @@ TEST_CASE("DiffDrive class forward&backward", "[transform]") { //Yin, Hang
    twisttest1.w = 0;
    turtlelib::WheelVelocities test_vel1;
    test_vel1 = test1.inverseKinematics(twisttest1);
-   REQUIRE(turtlelib::almost_equal(test_vel1.left, turtlelib::PI/2.0, 1.0e-5));
-   REQUIRE(turtlelib::almost_equal(test_vel1.right, turtlelib::PI/2.0, 1.0e-5));
+   REQUIRE(turtlelib::almost_equal(test_vel1.left, 4.75999, 1.0e-5));
+   REQUIRE(turtlelib::almost_equal(test_vel1.right, 4.75999, 1.0e-5));
 }
 
 // test case for DiffDrive class
@@ -441,7 +441,7 @@ TEST_CASE("DiffDrive class pure rotation", "[transform]") { //Yin, Hang
    state4 = test2.forwardKinematics(test_angle2);
    REQUIRE(turtlelib::almost_equal(state4.x, 0, 1.0e-5));
    REQUIRE(turtlelib::almost_equal(state4.y, 0, 1.0e-5));
-   REQUIRE(turtlelib::almost_equal(state4.theta, -turtlelib::PI/20.0, 1.0e-5));
+   REQUIRE(turtlelib::almost_equal(state4.theta, -0.647953, 1.0e-5));
    // test inverse kinematics
    turtlelib::Twist2D twisttest2;
    twisttest2.x = 0;
@@ -449,8 +449,8 @@ TEST_CASE("DiffDrive class pure rotation", "[transform]") { //Yin, Hang
    twisttest2.w = turtlelib::PI/2.0;
    turtlelib::WheelVelocities test_vel2;
    test_vel2 = test2.inverseKinematics(twisttest2);
-   REQUIRE(turtlelib::almost_equal(test_vel2.left, -5.0*turtlelib::PI, 1.0e-5));
-   REQUIRE(turtlelib::almost_equal(test_vel2.right, 5.0*turtlelib::PI, 1.0e-5));
+   REQUIRE(turtlelib::almost_equal(test_vel2.left, -3.80799, 1.0e-5));
+   REQUIRE(turtlelib::almost_equal(test_vel2.right, 3.80799, 1.0e-5));
 }
 
 // test case for DiffDrive class
