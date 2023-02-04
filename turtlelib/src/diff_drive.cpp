@@ -44,6 +44,7 @@ namespace turtlelib{
         this->phi = phi1;
 
         // calculate twist
+        // refer to forward kinematics section of the Kinematics notes
         Twist2D twist;
         twist.x = (R / 2.0) * (phi_dot1.left + phi_dot1.right);
         twist.y = 0.0;
@@ -71,6 +72,7 @@ namespace turtlelib{
             throw std::logic_error("This is an invalid twist!");
         }
         else{
+            // refer to inverse kinematics section of the Kinematics notes
             phi_dot.left = (twist.x - twist.w * D) / R;
             phi_dot.right = (twist.x + twist.w * D) / R;
         }
