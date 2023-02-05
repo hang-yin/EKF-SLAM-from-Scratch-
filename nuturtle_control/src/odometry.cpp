@@ -7,6 +7,7 @@
 #include "geometry_msgs/msg/transform_stamped.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
+#include "nuturtle_control/InitialPose.h"
 
 using namespace std::chrono_literals;
 
@@ -54,11 +55,11 @@ public:
         tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
 
         // Create a service to reset odometry
-        reset_srv_ = this->create_service<std_srvs::srv::Empty>("~/initial_pose",
-                                                                std::bind(&OdometryNode::initial_pose_callback,
-                                                                          this,
-                                                                          std::placeholders::_1,
-                                                                          std::placeholders::_2));
+        reset_srv_ = this->create_service<nuturtle_control::InitialPose>("~/initial_pose",
+                                                                         std::bind(&OdometryNode::initial_pose_callback,
+                                                                                   this,
+                                                                                   std::placeholders::_1,
+                                                                                   std::placeholders::_2));
         
         // Create a timer to publish odometry
         timer_ = this->create_wall_timer(100ms, std::bind(&OdometryNode::timer_callback, this));
