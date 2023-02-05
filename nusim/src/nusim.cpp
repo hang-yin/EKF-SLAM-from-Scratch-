@@ -151,6 +151,66 @@ public:
 
     // Initialize parameters
     encoder_ticks_per_rad_ = this->get_parameter("encoder_ticks_per_rad").as_double();
+
+    // Create publisher for wall marker array
+    wall_marker_array_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("~/wall_markers", 10);
+
+    // Declare wall-related parameters
+    this->declare_parameter("~x_length", 10.0);
+    this->declare_parameter("~y_length", 10.0);
+
+    // Get wall-related parameters
+    wall_x_ = this->get_parameter("~x_length").as_double();
+    wall_y_ = this->get_parameter("~y_length").as_double();
+
+    // Initialize wall marker array centered at (0,0), 0.25m tall, and 0.1m thick
+    wall_marker_array_.markers.resize(4);
+    for (int i = 0; i < 4; i++) {
+      wall_marker_array_.markers[i].header.frame_id = "nusim/world";
+      wall_marker_array_.markers[i].header.stamp = this->now();
+      wall_marker_array_.markers[i].ns = "walls";
+      wall_marker_array_.markers[i].id = i;
+      wall_marker_array_.markers[i].type = visualization_msgs::msg::Marker::CUBE;
+      wall_marker_array_.markers[i].action = visualization_msgs::msg::Marker::ADD;
+      wall_marker_array_.markers[i].pose.position.z = 0.125;
+      wall_marker_array_.markers[i].pose.orientation.x = 0.0;
+      wall_marker_array_.markers[i].pose.orientation.y = 0.0;
+      wall_marker_array_.markers[i].pose.orientation.z = 0.0;
+      wall_marker_array_.markers[i].pose.orientation.w = 1.0;
+      wall_marker_array_.markers[i].color.a = 1.0;
+      wall_marker_array_.markers[i].color.r = 1.0;
+      wall_marker_array_.markers[i].color.g = 1.0;
+      wall_marker_array_.markers[i].color.b = 1.0;
+    }
+
+    // first wall
+    wall_marker_array_.markers[0].pose.position.x = -wall_x_ / 2 + 0.05;
+    wall_marker_array_.markers[0].pose.position.y = 0.0;
+    wall_marker_array_.markers[0].scale.x = 0.1;
+    wall_marker_array_.markers[0].scale.y = wall_y_;
+    wall_marker_array_.markers[0].scale.z = 0.25;
+
+    // second wall
+    wall_marker_array_.markers[1].pose.position.x = 0.0;
+    wall_marker_array_.markers[1].pose.position.y = -wall_y_ / 2 + 0.05;
+    wall_marker_array_.markers[1].scale.x = wall_x_ + 0.2;
+    wall_marker_array_.markers[1].scale.y = 0.1;
+    wall_marker_array_.markers[1].scale.z = 0.25;
+
+    // third wall
+    wall_marker_array_.markers[2].pose.position.x = wall_x_ / 2 - 0.05;
+    wall_marker_array_.markers[2].pose.position.y = 0.0;
+    wall_marker_array_.markers[2].scale.x = 0.1;
+    wall_marker_array_.markers[2].scale.y = wall_y_;
+    wall_marker_array_.markers[2].scale.z = 0.25;
+
+    // fourth wall
+    wall_marker_array_.markers[3].pose.position.x = 0.0;
+    wall_marker_array_.markers[3].pose.position.y = wall_y_ / 2 - 0.05;
+    wall_marker_array_.markers[3].scale.x = wall_x_ + 0.2;
+    wall_marker_array_.markers[3].scale.y = 0.1;
+    wall_marker_array_.markers[3].scale.z = 0.25;
+
   }
 
 private:
@@ -189,8 +249,10 @@ private:
     // Broadcast transform
     transformStamped_.header.stamp = this->get_clock()->now();
     broadcaster_->sendTransform(transformStamped_);
-    // Publish marker array
+    // Publish obstacle marker array
     obstacles_pub_->publish(marker_array_);
+    // Publish wall marker array
+    walls_pub_->publish(wall_marker_array_);
     // Increment timestep
     timestep_++;
   }
@@ -254,6 +316,9 @@ private:
   float right_wheel_position_;
   turtlelib::DiffDrive diff_drive_;
   float encoder_ticks_per_rad_;
+  float wall_x_;
+  float wall_y_;
+  visualization_msgs::msg::MarkerArray wall_marker_array_;
 
 };
 
