@@ -6,6 +6,10 @@
 #include "tf2/LinearMath/Quaternion.h"
 #include "geometry_msgs/msg/transform_stamped.hpp"
 #include "nusim/srv/teleport.hpp"
+#include <nuturtlebot_msgs/msg/wheel_commands.hpp>
+#include <nuturtlebot_msgs/msg/sensor_data.hpp>
+#include "turtlelib/rigid2d.hpp"
+#include "turtlelib/diff_drive.hpp"
 #include <chrono>
 #include <functional>
 #include <memory>
@@ -28,6 +32,7 @@ public:
     this->declare_parameter("obstacles_x", std::vector<double>());
     this->declare_parameter("obstacles_y", std::vector<double>());
     this->declare_parameter("obstacles_r", 0.0);
+    this->declare_parameter("encoder_ticks_per_rad", 0.00153398078);
 
     // Check obstacles input, if length of vectors are not equal, exit node
     std::vector<double> obstacles_x = this->get_parameter("obstacles_x").as_double_array();
@@ -126,6 +131,26 @@ public:
     transformStamped_.transform.rotation.z = q0_.z();
     transformStamped_.transform.rotation.w = q0_.w();
 
+    // Create subscriber for red/wheel_cmd topic
+    wheel_cmd_sub_ = this->create_subscription<nuturtlebot_msgs::msg::WheelCommands>("red/wheel_cmd",
+                                                                                     10,
+                                                                                     std::bind(&NuSimNode::wheel_cmd_callback,
+                                                                                     this,
+                                                                                     std::placeholders::_1));
+
+    // Initialize wheel velocities
+    left_wheel_velocity_ = 0;
+    right_wheel_velocity_ = 0;
+
+    // Initialize wheel positions
+    left_wheel_position_ = 0.0;
+    right_wheel_position_ = 0.0;
+
+    // Create publisher to red/sensor_data topic with nuturtlebot_msgs/SensorData message type
+    sensor_data_pub_ = this->create_publisher<nuturtlebot_msgs::msg::SensorData>("red/sensor_data", 10);
+
+    // Initialize parameters
+    encoder_ticks_per_rad_ = this->get_parameter("encoder_ticks_per_rad").as_double();
   }
 
 private:
@@ -135,6 +160,32 @@ private:
     std_msgs::msg::UInt64 msg;
     msg.data = timestep_;
     timestep_pub_->publish(msg);
+    // Update wheel positions
+    left_wheel_position_ += left_wheel_velocity_ / rate_;
+    right_wheel_position_ += right_wheel_velocity_ / rate_;
+    // Publish sensor data
+    int left_encoder = (int)(left_wheel_position_/encoder_ticks_per_rad_) % 4096; // 12-bit encoder
+    int right_encoder = (int)(right_wheel_position_/encoder_ticks_per_rad_) % 4096;
+    nuturtlebot_msgs::msg::SensorData sensor_data;
+    sensor_data.left_encoder = left_encoder;
+    sensor_data.right_encoder = right_encoder;
+    sensor_data_pub_->publish(sensor_data);
+    // Update transform
+    turtlelib::RobotState robot_state;
+    diff_drive_.setWheelVelocities(left_wheel_velocity_, right_wheel_velocity_);
+    diff_drive_.setWheelPositions(left_wheel_position_, right_wheel_position_);
+    turtlelib::WheelAngles wheel_angles;
+    wheel_angles.left = left_wheel_position_;
+    wheel_angles.right = right_wheel_position_;
+    robot_state = diff_drive_.forwardKinematics(wheel_angles);
+    transformStamped_.transform.translation.x = robot_state.x;
+    transformStamped_.transform.translation.y = robot_state.y;
+    tf2::Quaternion q;
+    q.setRPY(0.0, 0.0, robot_state.theta);
+    transformStamped_.transform.rotation.x = q.x();
+    transformStamped_.transform.rotation.y = q.y();
+    transformStamped_.transform.rotation.z = q.z();
+    transformStamped_.transform.rotation.w = q.w();
     // Broadcast transform
     transformStamped_.header.stamp = this->get_clock()->now();
     broadcaster_->sendTransform(transformStamped_);
@@ -175,6 +226,12 @@ private:
     transformStamped_.transform.rotation.z = q.z();
     transformStamped_.transform.rotation.w = q.w();
   }
+  void wheel_cmd_callback(const nuturtlebot_msgs::msg::WheelCommands::SharedPtr msg)
+  {
+    // Set wheel velocities
+    left_wheel_velocity_ = msg->left_velocity;
+    right_wheel_velocity_ = msg->right_velocity;
+  }
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr timestep_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr obstacles_pub_;
@@ -190,6 +247,13 @@ private:
   float theta0_;
   tf2::Quaternion q0_;
   visualization_msgs::msg::MarkerArray marker_array_;
+  rclcpp::Subscriber<nuturtlebot_msgs::msg::WheelCommands>::SharedPtr wheel_commands_sub_;
+  int left_wheel_velocity_;
+  int right_wheel_velocity_;
+  float left_wheel_position_;
+  float right_wheel_position_;
+  turtlelib::DiffDrive diff_drive_;
+  float encoder_ticks_per_rad_;
 
 };
 
