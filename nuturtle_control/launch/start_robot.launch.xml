@@ -1,0 +1,43 @@
+<launch>
+    <arg name="cmd_src" default="circle"/>
+    <arg name="robot" default="nusim"/>
+    <arg name="use_rviz" default="true"/>
+
+    <!-- publish identity transform between the nusim/world and the odom frame-->
+    <node pkg="tf2_ros" exec="static_transform_publisher" name="static_transform_publisher" args="0 0 0 0 0 0 nusim/world odom"/>
+    
+    <!-- start the odometry and turtle_control nodes-->
+    <node pkg="nuturtle_control" exec="odometry" name="odometry_node"/>
+    <node pkg="nuturtle_control" exec="turtle_control" name="turtle_control_node"/>
+
+    <!-- argument cmd_src-->
+    <group if="$(arg cmd_src) == 'circle'">
+        <node name="circle_node" pkg="nuturtle_control" type="circle"/>
+    </group>
+    <group if="$(arg cmd_src) == 'teleop'">
+        <node name="teleop_node" pkg="turtlebot3_teleop" type="teleop_twist_keyboard"/>
+    </group>
+
+    <!-- argument robot-->
+    <group if="$(arg robot) == 'nusim'">
+        <include file="$(find-pkg-share nuturtle_description)/launch/load_one.launch.py">
+            <arg name="color" value="red"/>
+            <arg name="use_rviz" value="false"/>
+        </include>
+    </group>
+    <group if="$(arg robot) == 'localhost'">
+        <!-- TODO: work on this-->
+        <include file="$(find-pkg-share turtlebot3_description)/launch/turtlebot3_bringup.launch.py">
+            <arg name="model" value="burger"/>
+        </include>
+    </group>
+
+    <!-- argument use_rviz-->
+    <group if="$(arg use_rviz) == 'true' and $(arg robot) != 'localhost'">
+        <node pkg="rviz2" exec="rviz2" name="rviz2" args="-d $(find-pkg-share nuturtle_control)/config/nuturtle_control.rviz"/>
+        <include file="$(find-pkg-share nuturtle_description)/launch/load_one.launch.py">
+            <arg name="color" value="blue"/>
+            <arg name="use_rviz" value="false"/>
+        </include>
+    </group>
+</launch>
