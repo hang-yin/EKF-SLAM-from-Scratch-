@@ -3,7 +3,7 @@
 #include <nuturtlebot_msgs/msg/wheel_commands.hpp>
 #include <nuturtlebot_msgs/msg/sensor_data.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
-#include "nuturtle_description/diff_params.h"
+// #include "nuturtle_description/diff_params.h"
 #include "turtlelib/rigid2d.hpp"
 #include "turtlelib/diff_drive.hpp"
 
@@ -24,12 +24,12 @@ public:
         this->declare_parameter("collision_radius", 0.11);
 
         // Check if required parameters are defined
-        if (!get_parameter("wheel_radius") ||
-            !get_parameter("track_width") ||
-            !get_parameter("motor_cmd_max") ||
-            !get_parameter("motor_cmd_per_rad_sec") ||
-            !get_parameter("encoder_ticks_per_rad") ||
-            !get_parameter("collision_radius"))
+        if (get_parameter("wheel_radius").get_type() == rclcpp::ParameterType::PARAMETER_NOT_SET ||
+            get_parameter("track_width").get_type() == rclcpp::ParameterType::PARAMETER_NOT_SET ||
+            get_parameter("motor_cmd_max").get_type() == rclcpp::ParameterType::PARAMETER_NOT_SET ||
+            get_parameter("motor_cmd_per_rad_sec").get_type() == rclcpp::ParameterType::PARAMETER_NOT_SET ||
+            get_parameter("encoder_ticks_per_rad").get_type() == rclcpp::ParameterType::PARAMETER_NOT_SET ||
+            get_parameter("collision_radius").get_type() == rclcpp::ParameterType::PARAMETER_NOT_SET)
         {
             RCLCPP_ERROR(this->get_logger(), "Required parameters not defined");
             rclcpp::shutdown();
@@ -111,7 +111,7 @@ private:
         // Create a WheelCommands message
         nuturtlebot_msgs::msg::WheelCommands wheel_commands_msg;
         // Initialize twist
-        turtlelib::rigid2d::Twist2D twist;
+        turtlelib::Twist2D twist;
         // Set the linear and angular velocity
         twist.w = msg->angular.z;
         twist.x = msg->linear.x;

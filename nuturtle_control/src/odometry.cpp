@@ -7,7 +7,7 @@
 #include "geometry_msgs/msg/transform_stamped.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
-#include "nuturtle_control/InitialPose.h"
+#include "nuturtle_control/srv/initial_pose.hpp"
 
 using namespace std::chrono_literals;
 
@@ -55,11 +55,11 @@ public:
         tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
 
         // Create a service to reset odometry
-        reset_srv_ = this->create_service<nuturtle_control::InitialPose>("~/initial_pose",
-                                                                         std::bind(&OdometryNode::initial_pose_callback,
-                                                                                   this,
-                                                                                   std::placeholders::_1,
-                                                                                   std::placeholders::_2));
+        reset_srv_ = this->create_service<nuturtle_control::srv::InitialPose>("~/initial_pose",
+                                                                              std::bind(&OdometryNode::initial_pose_callback,
+                                                                                        this,
+                                                                                        std::placeholders::_1,
+                                                                                        std::placeholders::_2));
         
         // Create a timer to publish odometry
         timer_ = this->create_wall_timer(100ms, std::bind(&OdometryNode::timer_callback, this));
@@ -112,7 +112,7 @@ private:
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_sub_;
     rclcpp::TimerBase::SharedPtr timer_;
-    rclcpp::Service<std_srvs::srv::Empty>::SharedPtr reset_srv_;
+    rclcpp::Service<nuturtle_control::srv::InitialPose>::SharedPtr reset_srv_;
     std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
     nav_msgs::msg::Odometry odom_;
     turtlelib::DiffDrive diff_drive_;
@@ -151,8 +151,8 @@ private:
     }
 
     // Callback function for initial_pose service
-    void initial_pose_callback(const std_srvs::srv::Empty::Request::SharedPtr req,
-                               const std_srvs::srv::Empty::Response::SharedPtr res)
+    void initial_pose_callback(const nuturtle_control::srv::InitialPose::Request::SharedPtr req,
+                               const nuturtle_control::srv::InitialPose::Response::SharedPtr res)
     {
         x_ = 0.0;
         y_ = 0.0;
@@ -161,7 +161,8 @@ private:
         // the request contains the configuration of the robot
         // TODO: Set the configuration of the robot
         // the response is empty
-        return res;
+        (void)req;
+        (void)res;
     }
 
     // Callback function for timer
@@ -202,7 +203,7 @@ private:
 int main(int argc, char * argv[])
 {
     rclcpp::init(argc, argv);
-    rclcpp::spin(std::make_shared<Odometry>());
+    rclcpp::spin(std::make_shared<OdometryNode>());
     rclcpp::shutdown();
     return 0;
 }       

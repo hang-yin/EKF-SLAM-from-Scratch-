@@ -1,73 +1,59 @@
-cmake_minimum_required(VERSION 3.9)
+# Lines that begin with a # are comments
+# set the minimum required version of cmake, usually the first line
+cmake_minimum_required(VERSION 3.22)
+
+# project_name sets the name of the project and causes cmake to
+# find the c and c++ compilers
 project(turtlelib)
 
-# Add the source files for the turtlelib library
-set(TURTLE_SOURCES
-    src/rigid2d.cpp
-    src/diff_drive.cpp
-)
+include_directories(include/turtlelib)
 
-# Add the header files for the turtlelib library
-set(TURTLE_HEADERS
-    include/turtlelib/rigid2d.hpp
-    include/turtlelib/diff_drive.hpp
-)
+set(HEADER_FILES include/turtlelib/diff_drive.hpp include/turtlelib/rigid2d.hpp)
 
-# Add the source file for the frame_main executable
-set(FRAME_MAIN_SOURCES
-    src/frame_main.cpp
-)
+# Find your dependencies.
+# Many libraries ship with files that allow CMake to find them
+# Then general behavior is to call "find_package" but the options
+# provided are package specific.  Usually there is then a CMAKE variable
+# That is defined to reference the library
+# here: we find the eigen library as per the instruction
+# https://eigen.tuxfamily.org/dox/TopicCMakeGuide.html
+# find_package(Eigen3 3.3 REQUIRED NO_MODULE)
 
-# create the turtlelib library
-add_library(turtlelib ${TURTLE_SOURCES} ${TURTLE_HEADERS})
-# The add_library function just added turtlelib as a "target"
-# A "target" is a name that CMake uses to refer to some type of output
-# In this case it is a library but it could also be an executable or some other items
-
-# Public include directories can be used by other targets that link against turtlelib
-# By adding include/ to the include path, this means that files in e.g., include/turtlelib
-# can be included with #include"turtlelib/file.hpp"
-target_include_directories(${PROJECT_NAME} PUBLIC include/)
-
-# enable C++ 17
-target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17) 
-
-# warnings are your friend!
-target_compile_options(${PROJECT_NAME} PUBLIC -Wall -Wextra -Wpedantic)
-
-# create the executable target  and link it with the rigid2d library
-# It is also possible specify multiple cpp files and they will be linked
-# into a single executable (as long as exactly one of these files includes a main() function).
-# However, by creating a library (as we are doing here) the library files
-# can be compiled once and used
+# Create an executable from the following source code files
+# The Name of the executable creates a cmake "target"
 add_executable(frame_main src/frame_main.cpp)
-target_link_libraries(frame_main ${PROJECT_NAME})
+target_link_libraries(frame_main turtlelib)
 
-install(
-    TARGETS ${PROJECT_NAME} frame_main
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib
-    RUNTIME DESTINATION bin
-    INCLUDES DESTINATION include/turtlelib
-    EXPORT ${PROJECT_NAME}-targets
-)
+# Create a library.  Can specify if it is shared or static but usually
+# you don't need or want to.
+# name is the name of the library without the extension or lib prefix
+# name creates a cmake "target"
+add_library(turtlelib src/diff_drive.cpp src/rigid2d.cpp ${HEADER_FILES})
 
-install(
-    FILES ${TURTLE_HEADERS}
-    DESTINATION include/turtlelib
-)
+# Use target_link_libraries to add dependencies to a "target"
+# (e.g., a library or executable)
+# This will automatically add all required library files
+# that need to be linked
+# and paths to th locations of header files
+# target_link_libraries(Name Eigen3::Eigen)
 
-# CMake also has the ability to generate doxygen documentation
-find_package(Doxygen)
-set(DOXYGEN_USE_MDFILE_AS_MAINPAGE README.md) # Use the readme in your doxygen docs
-doxygen_add_docs(doxygen include/ src/ README.md ALL)
+# Use target_include_directories so that #include"mylibrary/header.hpp" works
+# The use of the <BUILD_INTERFACE> and <INSTALL_INTERFACE> is because when
+# Using the library from the build directory or after installation
+# During build, the headers are read from the source code directory
+# When used from the installed location, headers are in the 
+# system include/ directory
+target_include_directories(turtlelib
+    PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
+    $<INSTALL_INTERFACE:include/>)
 
-# Use the cmake testing functionality. A test is just an executable.
-# We use the catch2 unit testing framework
-find_package(Catch2 3 REQUIRED)
+# specify additional compilation flags for a target
+target_compile_options(turtlelib PUBLIC -Wall)
 
-enable_testing()
-add_executable(turtlelib_test tests/tests.cpp)
-target_link_libraries(turtlelib_test turtlelib Catch2::Catch2WithMain)
+install (TARGETS turtlelib EXPORT turtlelib-targets )
 
-add_test(NAME Test_of_Turtlelib COMMAND turtlelib_test)
+install(EXPORT turtlelib-targets
+        FILE turtlelib-config.cmake
+        NAMESPACE turtlelib::
+        DESTINATION lib/cmake/turtlelib)

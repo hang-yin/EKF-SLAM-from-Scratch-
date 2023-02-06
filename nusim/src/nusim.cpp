@@ -232,11 +232,14 @@ private:
     sensor_data_pub_->publish(sensor_data);
     // Update transform
     turtlelib::RobotState robot_state;
-    diff_drive_.setWheelVelocities(left_wheel_velocity_, right_wheel_velocity_);
-    diff_drive_.setWheelPositions(left_wheel_position_, right_wheel_position_);
     turtlelib::WheelAngles wheel_angles;
     wheel_angles.left = left_wheel_position_;
     wheel_angles.right = right_wheel_position_;
+    turtlelib::WheelVelocities wheel_velocities;
+    wheel_velocities.left = left_wheel_velocity_;
+    wheel_velocities.right = right_wheel_velocity_;
+    diff_drive_.setWheelVelocities(wheel_velocities);
+    diff_drive_.setWheelAngles(wheel_angles);
     robot_state = diff_drive_.forwardKinematics(wheel_angles);
     transformStamped_.transform.translation.x = robot_state.x;
     transformStamped_.transform.translation.y = robot_state.y;
@@ -252,7 +255,7 @@ private:
     // Publish obstacle marker array
     obstacles_pub_->publish(marker_array_);
     // Publish wall marker array
-    walls_pub_->publish(wall_marker_array_);
+    wall_marker_array_pub_->publish(wall_marker_array_);
     // Increment timestep
     timestep_++;
   }
@@ -309,7 +312,7 @@ private:
   float theta0_;
   tf2::Quaternion q0_;
   visualization_msgs::msg::MarkerArray marker_array_;
-  rclcpp::Subscriber<nuturtlebot_msgs::msg::WheelCommands>::SharedPtr wheel_commands_sub_;
+  rclcpp::Subscription<nuturtlebot_msgs::msg::WheelCommands>::SharedPtr wheel_cmd_sub_;
   int left_wheel_velocity_;
   int right_wheel_velocity_;
   float left_wheel_position_;
@@ -319,6 +322,8 @@ private:
   float wall_x_;
   float wall_y_;
   visualization_msgs::msg::MarkerArray wall_marker_array_;
+  rclcpp::Publisher<nuturtlebot_msgs::msg::SensorData>::SharedPtr sensor_data_pub_;
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr wall_marker_array_pub_;
 
 };
 
