@@ -18,7 +18,7 @@ public:
     : Node("odometry")
     {
         // Declare parameters
-        this->declare_parameter("body_id", "base_footprint");
+        this->declare_parameter("body_id", "blue/base_footprint");
         this->declare_parameter("odom_id", "odom");
         this->declare_parameter("wheel_left", "left_default");
         this->declare_parameter("wheel_right", "right_default");
@@ -42,10 +42,10 @@ public:
         wheel_right_ = this->get_parameter("wheel_right").as_string();
 
         // Create publisher for odometry
-        odom_pub_ = this->create_publisher<nav_msgs::msg::Odometry>("~/odom", 10);
+        odom_pub_ = this->create_publisher<nav_msgs::msg::Odometry>("/odom", 10);
 
         // Create subscriber for joint state
-        joint_sub_ = this->create_subscription<sensor_msgs::msg::JointState>("~/joint_states",
+        joint_sub_ = this->create_subscription<sensor_msgs::msg::JointState>("blue/joint_states",
                                                                              10,
                                                                              std::bind(&OdometryNode::joint_callback,
                                                                                        this,
@@ -128,6 +128,10 @@ private:
     // Callback function for joint state
     void joint_callback(const sensor_msgs::msg::JointState::SharedPtr msg)
     {
+        // Check if joint state message is valid
+        if (msg->name.size() != 2 || msg->position.size() != 2 || msg->velocity.size() != 2) {
+            return;
+        }
         left_wheel_pos_ = msg->position.at(0);
         right_wheel_pos_ = msg->position.at(1);
         left_wheel_vel_ = msg->velocity.at(0);
@@ -143,8 +147,13 @@ private:
         diff_drive_.setWheelAngles(wheel_angles);
         diff_drive_.setWheelVelocities(wheel_velocities);
 
+        // Get new angles
+        turtlelib::WheelAngles new_wheel_angles;
+        new_wheel_angles.left = left_wheel_pos_ + left_wheel_vel_ * 0.1;
+        new_wheel_angles.right = right_wheel_pos_ + right_wheel_vel_ * 0.1;
+
         // Update x, y, theta through forward kinematics
-        turtlelib::RobotState robot_state = diff_drive_.forwardKinematics(wheel_angles);
+        turtlelib::RobotState robot_state = diff_drive_.forwardKinematics(new_wheel_angles);
         x_ = robot_state.x;
         y_ = robot_state.y;
         theta_ = robot_state.theta;

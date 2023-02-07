@@ -132,7 +132,7 @@ public:
     transformStamped_.transform.rotation.w = q0_.w();
 
     // Create subscriber for red/wheel_cmd topic
-    wheel_cmd_sub_ = this->create_subscription<nuturtlebot_msgs::msg::WheelCommands>("red/wheel_cmd",
+    wheel_cmd_sub_ = this->create_subscription<nuturtlebot_msgs::msg::WheelCommands>("/wheel_cmd",
                                                                                      10,
                                                                                      std::bind(&NuSimNode::wheel_cmd_callback,
                                                                                      this,
@@ -147,7 +147,7 @@ public:
     right_wheel_position_ = 0.0;
 
     // Create publisher to red/sensor_data topic with nuturtlebot_msgs/SensorData message type
-    sensor_data_pub_ = this->create_publisher<nuturtlebot_msgs::msg::SensorData>("red/sensor_data", 10);
+    sensor_data_pub_ = this->create_publisher<nuturtlebot_msgs::msg::SensorData>("/sensor_data", 10);
 
     // Initialize parameters
     encoder_ticks_per_rad_ = this->get_parameter("encoder_ticks_per_rad").as_double();

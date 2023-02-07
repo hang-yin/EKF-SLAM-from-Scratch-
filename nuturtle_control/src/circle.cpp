@@ -12,12 +12,12 @@ public:
     Circle()
     : Node("circle")
     {
-        angular_velocity_ = 0.0;
-        linear_velocity_ = 0.0;
-        radius_ = 0.0;
+        angular_velocity_ = 0.01;
+        linear_velocity_ = 0.01;
+        radius_ = 1.0;
 
         // Declare cmd_vel publisher
-        cmd_vel_pub_ = this->create_publisher<geometry_msgs::msg::Twist>("~/cmd_vel", 10);
+        cmd_vel_pub_ = this->create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
 
         // Declare control service
         control_srv_ = this->create_service<nuturtle_control::srv::Control>("~/control",

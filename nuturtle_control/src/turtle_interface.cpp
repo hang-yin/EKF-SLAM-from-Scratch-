@@ -44,18 +44,18 @@ public:
         collision_radius_ = this->get_parameter("collision_radius").as_double();
 
         // Declare publisher to joint_states topic with the message type JointState
-        joint_states_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("~/joint_states", 10);
+        joint_states_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("blue/joint_states", 10);
         // Declare publisher to wheel_commands topic with the message type WheelCommands
-        wheel_commands_pub_ = this->create_publisher<nuturtlebot_msgs::msg::WheelCommands>("~/wheel_commands", 10);
+        wheel_commands_pub_ = this->create_publisher<nuturtlebot_msgs::msg::WheelCommands>("/wheel_cmd", 10);
 
         // Declare subscriber to sensor_data topic with the message type SensorData
-        sensor_data_sub_ = this->create_subscription<nuturtlebot_msgs::msg::SensorData>("~/sensor_data",
+        sensor_data_sub_ = this->create_subscription<nuturtlebot_msgs::msg::SensorData>("/sensor_data",
                                                                                         10,
                                                                                         std::bind(&TurtleControl::sensor_data_callback,
                                                                                                   this,
                                                                                                   std::placeholders::_1));
         // Declare subscriber to cmd_vel topic with the message type Twist
-        cmd_vel_sub_ = this->create_subscription<geometry_msgs::msg::Twist>("~/cmd_vel",
+        cmd_vel_sub_ = this->create_subscription<geometry_msgs::msg::Twist>("/cmd_vel",
                                                                             10,
                                                                             std::bind(&TurtleControl::cmd_vel_callback,
                                                                                       this,

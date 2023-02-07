@@ -11,21 +11,22 @@
     <node pkg="nuturtle_control" exec="turtle_control" name="turtle_control_node"/>
 
     <!-- argument cmd_src-->
-    <group if="$(arg cmd_src) == 'circle'">
-        <node name="circle_node" pkg="nuturtle_control" type="circle"/>
+    <group if="$(eval '\'$(var cmd_src)\' == \'circle\'')">
+        <node name="circle_node" pkg="nuturtle_control" exec="circle"/>
     </group>
-    <group if="$(arg cmd_src) == 'teleop'">
-        <node name="teleop_node" pkg="turtlebot3_teleop" type="teleop_twist_keyboard"/>
+    <group if="$(eval '\'$(var cmd_src)\' == \'teleop\'')">
+        <node name="teleop_node" pkg="turtlebot3_teleop" exec="teleop_twist_keyboard"/>
     </group>
 
     <!-- argument robot-->
-    <group if="$(arg robot) == 'nusim'">
+    <group if="$(eval '\'$(var robot)\' == \'nusim\'')">
         <include file="$(find-pkg-share nuturtle_description)/launch/load_one.launch.py">
             <arg name="color" value="red"/>
             <arg name="use_rviz" value="false"/>
         </include>
+        <node pkg="nusim" exec="nusim_node" name="nusim_node"/>
     </group>
-    <group if="$(arg robot) == 'localhost'">
+    <group if="$(eval '\'$(var robot)\' == \'localhost\'')">
         <!-- TODO: work on this-->
         <include file="$(find-pkg-share turtlebot3_description)/launch/turtlebot3_bringup.launch.py">
             <arg name="model" value="burger"/>
@@ -33,7 +34,7 @@
     </group>
 
     <!-- argument use_rviz-->
-    <group if="$(arg use_rviz) == 'true' and $(arg robot) != 'localhost'">
+    <group if="$(eval '\'$(var use_rviz)\' == \'true\' and \'$(var robot)\' != \'localhost\'')">
         <node pkg="rviz2" exec="rviz2" name="rviz2" args="-d $(find-pkg-share nuturtle_control)/config/nuturtle_control.rviz"/>
         <include file="$(find-pkg-share nuturtle_description)/launch/load_one.launch.py">
             <arg name="color" value="blue"/>
