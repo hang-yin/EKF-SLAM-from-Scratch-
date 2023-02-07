@@ -12,8 +12,14 @@ public:
     Circle()
     : Node("circle")
     {
-        angular_velocity_ = 0.01;
-        linear_velocity_ = 0.01;
+        // For physical test
+        /*
+        angular_velocity_ = 0.3;
+        linear_velocity_ = 0.06;
+        radius_ = 0.2;
+        */
+        angular_velocity_ = 0.1;
+        linear_velocity_ = 0.1;
         radius_ = 1.0;
 
         // Declare cmd_vel publisher
@@ -41,13 +47,15 @@ public:
                                                                          std::placeholders::_2));
         
         // Create a timer to publish cmd_vel
-        cmd_vel_timer_ = this->create_wall_timer(100ms, std::bind(&Circle::timer_callback, this));
+        rate_ = 200.0;
+        cmd_vel_timer_ = this->create_wall_timer(1s / rate_, std::bind(&Circle::timer_callback, this));
     }
 
 private:
     double angular_velocity_;
     double linear_velocity_;
     double radius_;
+    double rate_;
     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
     rclcpp::Service<nuturtle_control::srv::Control>::SharedPtr control_srv_;
     rclcpp::Service<std_srvs::srv::Empty>::SharedPtr reverse_srv_;

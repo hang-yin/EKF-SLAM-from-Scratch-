@@ -49,9 +49,11 @@ target_include_directories(turtlelib
     $<INSTALL_INTERFACE:include/>)
 
 # specify additional compilation flags for a target
-target_compile_options(turtlelib PUBLIC -Wall)
+target_compile_options(turtlelib PUBLIC -Wall -Wextra -Wpedantic)
 
-install (TARGETS turtlelib EXPORT turtlelib-targets )
+install(TARGETS turtlelib EXPORT turtlelib-targets )
+
+install(DIRECTORY include/turtlelib DESTINATION include)
 
 install(EXPORT turtlelib-targets
         FILE turtlelib-config.cmake

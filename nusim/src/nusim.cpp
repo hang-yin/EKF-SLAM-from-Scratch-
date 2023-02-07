@@ -33,6 +33,7 @@ public:
     this->declare_parameter("obstacles_y", std::vector<double>());
     this->declare_parameter("obstacles_r", 0.0);
     this->declare_parameter("encoder_ticks_per_rad", 0.00153398078);
+    this->declare_parameter("motor_cmd_per_rad_sec", 0.024);
 
     // Check obstacles input, if length of vectors are not equal, exit node
     std::vector<double> obstacles_x = this->get_parameter("obstacles_x").as_double_array();
@@ -42,7 +43,7 @@ public:
       rclcpp::shutdown();
     }
 
-    float obstacles_r = this->get_parameter("obstacles_r").as_double();
+    double obstacles_r = this->get_parameter("obstacles_r").as_double();
     // Check obstacles input, if radius is negative, exit node
     if (obstacles_r < 0) {
       RCLCPP_ERROR(this->get_logger(), "Radius of obstacles cannot be negative");
@@ -139,8 +140,8 @@ public:
                                                                                      std::placeholders::_1));
 
     // Initialize wheel velocities
-    left_wheel_velocity_ = 0;
-    right_wheel_velocity_ = 0;
+    left_wheel_velocity_ = 0.0;
+    right_wheel_velocity_ = 0.0;
 
     // Initialize wheel positions
     left_wheel_position_ = 0.0;
@@ -151,6 +152,7 @@ public:
 
     // Initialize parameters
     encoder_ticks_per_rad_ = this->get_parameter("encoder_ticks_per_rad").as_double();
+    motor_cmd_per_rad_sec_ = this->get_parameter("motor_cmd_per_rad_sec").as_double();
 
     // Create publisher for wall marker array
     wall_marker_array_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("~/wall_markers", 10);
@@ -220,18 +222,8 @@ private:
     std_msgs::msg::UInt64 msg;
     msg.data = timestep_;
     timestep_pub_->publish(msg);
-    // Update wheel positions
-    left_wheel_position_ += left_wheel_velocity_ / rate_;
-    right_wheel_position_ += right_wheel_velocity_ / rate_;
-    // Publish sensor data
-    int left_encoder = (int)(left_wheel_position_/encoder_ticks_per_rad_) % 4096; // 12-bit encoder
-    int right_encoder = (int)(right_wheel_position_/encoder_ticks_per_rad_) % 4096;
-    nuturtlebot_msgs::msg::SensorData sensor_data;
-    sensor_data.left_encoder = left_encoder;
-    sensor_data.right_encoder = right_encoder;
-    sensor_data_pub_->publish(sensor_data);
+
     // Update transform
-    turtlelib::RobotState robot_state;
     turtlelib::WheelAngles wheel_angles;
     wheel_angles.left = left_wheel_position_;
     wheel_angles.right = right_wheel_position_;
@@ -240,17 +232,42 @@ private:
     wheel_velocities.right = right_wheel_velocity_;
     diff_drive_.setWheelVelocities(wheel_velocities);
     diff_drive_.setWheelAngles(wheel_angles);
-    robot_state = diff_drive_.forwardKinematics(wheel_angles);
-    transformStamped_.transform.translation.x = robot_state.x;
-    transformStamped_.transform.translation.y = robot_state.y;
+    // Update wheel positions
+    left_wheel_position_ += left_wheel_velocity_ / rate_;
+    right_wheel_position_ += right_wheel_velocity_ / rate_;
+
+    // Publish sensor data
+    int left_encoder = (int)(left_wheel_position_/encoder_ticks_per_rad_) % 4096; // 12-bit encoder
+    int right_encoder = (int)(right_wheel_position_/encoder_ticks_per_rad_) % 4096;
+    nuturtlebot_msgs::msg::SensorData sensor_data;
+    sensor_data.left_encoder = left_encoder;
+    sensor_data.right_encoder = right_encoder;
+    sensor_data_pub_->publish(sensor_data);
+    
+    // Create new WheelAngles instance
+    wheel_angles.left = left_wheel_position_;
+    wheel_angles.right = right_wheel_position_;
+    
+    // normalize wheel_angles so that they are between 0 and 2pi
+    // wheel_angles.left = fmod(wheel_angles.left, 2 * turtlelib::PI);
+    // wheel_angles.right = fmod(wheel_angles.right, 2 * turtlelib::PI);
+    
+    // log wheel angles
+    RCLCPP_INFO(this->get_logger(), "Sim Left wheel angle: %f", wheel_angles.left);
+    RCLCPP_INFO(this->get_logger(), "Sim Right wheel angle: %f", wheel_angles.right);
+    robot_state_ = diff_drive_.forwardKinematics(wheel_angles);
+    
+    // Broadcast transform
+    transformStamped_.header.stamp = this->get_clock()->now();
+    transformStamped_.transform.translation.x = robot_state_.x;
+    transformStamped_.transform.translation.y = robot_state_.y;
     tf2::Quaternion q;
-    q.setRPY(0.0, 0.0, robot_state.theta);
+    q.setRPY(0.0, 0.0, robot_state_.theta);
     transformStamped_.transform.rotation.x = q.x();
     transformStamped_.transform.rotation.y = q.y();
     transformStamped_.transform.rotation.z = q.z();
     transformStamped_.transform.rotation.w = q.w();
-    // Broadcast transform
-    transformStamped_.header.stamp = this->get_clock()->now();
+
     broadcaster_->sendTransform(transformStamped_);
     // Publish obstacle marker array
     obstacles_pub_->publish(marker_array_);
@@ -294,8 +311,8 @@ private:
   void wheel_cmd_callback(const nuturtlebot_msgs::msg::WheelCommands::SharedPtr msg)
   {
     // Set wheel velocities
-    left_wheel_velocity_ = msg->left_velocity;
-    right_wheel_velocity_ = msg->right_velocity;
+    left_wheel_velocity_ = static_cast<double>(msg->left_velocity) * motor_cmd_per_rad_sec_;
+    right_wheel_velocity_ = static_cast<double>(msg->right_velocity) * motor_cmd_per_rad_sec_;
   }
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr timestep_pub_;
@@ -307,31 +324,33 @@ private:
   geometry_msgs::msg::TransformStamped transformStamped_;
   uint64_t timestep_;
   double rate_;
-  float x0_;
-  float y0_;
-  float theta0_;
+  double x0_;
+  double y0_;
+  double theta0_;
   tf2::Quaternion q0_;
   visualization_msgs::msg::MarkerArray marker_array_;
   rclcpp::Subscription<nuturtlebot_msgs::msg::WheelCommands>::SharedPtr wheel_cmd_sub_;
-  int left_wheel_velocity_;
-  int right_wheel_velocity_;
-  float left_wheel_position_;
-  float right_wheel_position_;
+  double left_wheel_velocity_;
+  double right_wheel_velocity_;
+  double left_wheel_position_;
+  double right_wheel_position_;
   turtlelib::DiffDrive diff_drive_;
-  float encoder_ticks_per_rad_;
-  float wall_x_;
-  float wall_y_;
+  double encoder_ticks_per_rad_;
+  double motor_cmd_per_rad_sec_;
+  double wall_x_;
+  double wall_y_;
   visualization_msgs::msg::MarkerArray wall_marker_array_;
   rclcpp::Publisher<nuturtlebot_msgs::msg::SensorData>::SharedPtr sensor_data_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr wall_marker_array_pub_;
+  turtlelib::RobotState robot_state_;
 
 };
 
 int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
-  std::vector<float> obstacles_x = {-0.6, 0.7, 0.5};
-  std::vector<float> obstacles_y = {-0.8, -0.7, 0.9};
+  std::vector<double> obstacles_x = {-0.6, 0.7, 0.5};
+  std::vector<double> obstacles_y = {-0.8, -0.7, 0.9};
   rclcpp::spin(std::make_shared<NuSimNode>());
   rclcpp::shutdown();
   return 0;

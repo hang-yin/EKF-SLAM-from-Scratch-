@@ -62,7 +62,8 @@ public:
                                                                                         std::placeholders::_2));
         
         // Create a timer to publish odometry
-        timer_ = this->create_wall_timer(100ms, std::bind(&OdometryNode::timer_callback, this));
+        rate_ = 200.0;
+        //timer_ = this->create_wall_timer(1s / rate_, std::bind(&OdometryNode::timer_callback, this));
 
         // Initialize odometry
         odom_.header.frame_id = odom_id_;
@@ -111,7 +112,7 @@ private:
     std::string wheel_right_;
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_sub_;
-    rclcpp::TimerBase::SharedPtr timer_;
+    //rclcpp::TimerBase::SharedPtr timer_;
     rclcpp::Service<nuturtle_control::srv::InitialPose>::SharedPtr reset_srv_;
     std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
     nav_msgs::msg::Odometry odom_;
@@ -124,14 +125,31 @@ private:
     double left_wheel_vel_;
     double right_wheel_vel_;
     geometry_msgs::msg::TransformStamped odom_tf_;
+    double rate_;
+    turtlelib::WheelVelocities old_wheel_velocities_;
+    turtlelib::WheelAngles old_wheel_angles_;
 
     // Callback function for joint state
     void joint_callback(const sensor_msgs::msg::JointState::SharedPtr msg)
     {
         // Check if joint state message is valid
+        
         if (msg->name.size() != 2 || msg->position.size() != 2 || msg->velocity.size() != 2) {
+            /*
+            diff_drive_.setWheelVelocities(old_wheel_velocities_);
+            diff_drive_.setWheelAngles(old_wheel_angles_);
+            turtlelib::WheelAngles new_wheel_angles;
+            new_wheel_angles.left = old_wheel_angles_.left + old_wheel_velocities_.left / rate_;
+            new_wheel_angles.right = old_wheel_angles_.right + old_wheel_velocities_.right / rate_;
+            old_wheel_angles_ = new_wheel_angles;
+            turtlelib::RobotState robot_state = diff_drive_.forwardKinematics(new_wheel_angles);
+            x_ = robot_state.x;
+            y_ = robot_state.y;
+            theta_ = robot_state.theta;
+            */
             return;
         }
+        
         left_wheel_pos_ = msg->position.at(0);
         right_wheel_pos_ = msg->position.at(1);
         left_wheel_vel_ = msg->velocity.at(0);
@@ -147,16 +165,56 @@ private:
         diff_drive_.setWheelAngles(wheel_angles);
         diff_drive_.setWheelVelocities(wheel_velocities);
 
+        // experimenting
+        old_wheel_velocities_ = wheel_velocities;
+
         // Get new angles
         turtlelib::WheelAngles new_wheel_angles;
-        new_wheel_angles.left = left_wheel_pos_ + left_wheel_vel_ * 0.1;
-        new_wheel_angles.right = right_wheel_pos_ + right_wheel_vel_ * 0.1;
+        new_wheel_angles.left = left_wheel_pos_ + left_wheel_vel_ / (rate_*2);
+        new_wheel_angles.right = right_wheel_pos_ + right_wheel_vel_ / (rate_*2);
+
+        // experimenting
+        old_wheel_angles_ = new_wheel_angles;
 
         // Update x, y, theta through forward kinematics
+        // log new wheel angles
+        RCLCPP_INFO(this->get_logger(), "Odom Left wheel angle: %f", new_wheel_angles.left);
+        RCLCPP_INFO(this->get_logger(), "Odom Right wheel angle: %f", new_wheel_angles.right);
         turtlelib::RobotState robot_state = diff_drive_.forwardKinematics(new_wheel_angles);
         x_ = robot_state.x;
         y_ = robot_state.y;
         theta_ = robot_state.theta;
+
+        // Update header
+        odom_.header.stamp = this->now();
+
+        // Update pose
+        odom_.pose.pose.position.x = x_;
+        odom_.pose.pose.position.y = y_;
+
+        // Update orientation
+        tf2::Quaternion q;
+        q.setRPY(0.0, 0.0, theta_);
+        odom_.pose.pose.orientation.x = q.x();
+        odom_.pose.pose.orientation.y = q.y();
+        odom_.pose.pose.orientation.z = q.z();
+        odom_.pose.pose.orientation.w = q.w();
+
+        // TODO: Update twist
+        
+        // Publish odometry
+        odom_pub_->publish(odom_);
+
+        // Publish transform
+        q.setRPY(0.0, 0.0, theta_);
+        odom_tf_.header.stamp = this->now();
+        odom_tf_.transform.translation.x = x_;
+        odom_tf_.transform.translation.y = y_;
+        odom_tf_.transform.rotation.x = q.x();
+        odom_tf_.transform.rotation.y = q.y();
+        odom_tf_.transform.rotation.z = q.z();
+        odom_tf_.transform.rotation.w = q.w();
+        tf_broadcaster_->sendTransform(odom_tf_);
     }
 
     // Callback function for initial_pose service
@@ -174,6 +232,7 @@ private:
         (void)res;
     }
 
+    /*
     // Callback function for timer
     void timer_callback()
     {
@@ -198,6 +257,7 @@ private:
         odom_pub_->publish(odom_);
 
         // Publish transform
+        q.setRPY(0.0, 0.0, theta_);
         odom_tf_.header.stamp = this->now();
         odom_tf_.transform.translation.x = x_;
         odom_tf_.transform.translation.y = y_;
@@ -206,7 +266,7 @@ private:
         odom_tf_.transform.rotation.z = q.z();
         odom_tf_.transform.rotation.w = q.w();
         tf_broadcaster_->sendTransform(odom_tf_);
-    } 
+    } */
 };
 
 int main(int argc, char * argv[])

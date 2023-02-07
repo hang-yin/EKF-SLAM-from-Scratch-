@@ -19,88 +19,55 @@ find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
-# find_package(turtlelib REQUIRED)
-# uncomment the following section in order to fill in
-# further dependencies manually.
-# find_package(<dependency> REQUIRED)
 
-rosidl_generate_interfaces(${PROJECT_NAME} "srv/Control.srv" "srv/InitialPose.srv")
-rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} "rosidl_typesupport_cpp")
+rosidl_generate_interfaces(${PROJECT_NAME}_srv "srv/Control.srv" "srv/InitialPose.srv" LIBRARY_NAME ${PROJECT_NAME} DEPENDENCIES std_msgs)
+rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME}_srv "rosidl_typesupport_cpp")
 
 add_executable(turtle_control src/turtle_interface.cpp)
 add_executable(circle src/circle.cpp)
 add_executable(odometry src/odometry.cpp)
 
 ament_target_dependencies(turtle_control
-  "rclcpp"
-  "rclcpp_components"
-  "sensor_msgs"
-  "std_msgs"
-  "nuturtlebot_msgs"
-  "geometry_msgs"
+  rclcpp
+  rclcpp_components
+  sensor_msgs
+  std_msgs
+  nuturtlebot_msgs
+  geometry_msgs
+  turtlelib
 )
 
 ament_target_dependencies(circle
-  "rclcpp"
-  "rclcpp_components"
-  "sensor_msgs"
-  "std_msgs"
-  "std_srvs"
-  "nuturtlebot_msgs"
-  "geometry_msgs"
+  rclcpp
+  rclcpp_components
+  sensor_msgs
+  std_msgs
+  std_srvs
+  nuturtlebot_msgs
+  geometry_msgs
+  turtlelib
 )
 
 ament_target_dependencies(odometry
-  "rclcpp"
-  "rclcpp_components"
-  "sensor_msgs"
-  "std_msgs"
-  "std_srvs"
-  "nuturtlebot_msgs"
-  "geometry_msgs"
-  "tf2"
-  "tf2_ros"
-  "nav_msgs"
+  rclcpp
+  rclcpp_components
+  sensor_msgs
+  std_msgs
+  std_srvs
+  nuturtlebot_msgs
+  geometry_msgs
+  tf2
+  tf2_ros
+  nav_msgs
+  turtlelib
 )
 
-# target_link_libraries(nuturtle_interface turtlelib::turtlelib)
-
-target_link_libraries(turtle_control
-  ${rclcpp_LIBRARIES}
-  ${rclcpp_components_LIBRARIES}
-  ${sensor_msgs_LIBRARIES}
-  ${std_msgs_LIBRARIES}
-  ${nuturtlebot_msgs_LIBRARIES}
-  ${geometry_msgs_LIBRARIES}
-  turtlelib::turtlelib
-)
-
-target_link_libraries(circle
-  ${rclcpp_LIBRARIES}
-  ${rclcpp_components_LIBRARIES}
-  ${sensor_msgs_LIBRARIES}
-  ${std_msgs_LIBRARIES}
-  ${std_srvs_LIBRARIES}
-  ${nuturtlebot_msgs_LIBRARIES}
-  ${geometry_msgs_LIBRARIES}
-  turtlelib::turtlelib
-  "${cpp_typesupport_target}"
-)
-
-target_link_libraries(odometry
-  ${rclcpp_LIBRARIES}
-  ${rclcpp_components_LIBRARIES}
-  ${sensor_msgs_LIBRARIES}
-  ${std_msgs_LIBRARIES}
-  ${std_srvs_LIBRARIES}
-  ${nuturtlebot_msgs_LIBRARIES}
-  ${geometry_msgs_LIBRARIES}
-  ${tf2_LIBRARIES}
-  ${tf2_ros_LIBRARIES}
-  ${nav_msgs_LIBRARIES}
-  turtlelib::turtlelib
-  "${cpp_typesupport_target}"
-)
+target_link_libraries(turtle_control turtlelib::turtlelib)
+target_link_libraries(turtle_control "${cpp_typesupport_target}")
+target_link_libraries(circle turtlelib::turtlelib)
+target_link_libraries(circle "${cpp_typesupport_target}")
+target_link_libraries(odometry turtlelib::turtlelib)
+target_link_libraries(odometry "${cpp_typesupport_target}")
 
 install (TARGETS
   turtle_control
@@ -111,22 +78,22 @@ install (TARGETS
 
 install(DIRECTORY
   launch
-  DESTINATION share/${PROJECT_NAME}/
+  DESTINATION share/nuturtle_control
 )
 
 install(DIRECTORY
   config
-  DESTINATION share/${PROJECT_NAME}
+  DESTINATION share/nuturtle_control
 )
 
 install(DIRECTORY
   src
-  DESTINATION share/${PROJECT_NAME}
+  DESTINATION share/nuturtle_control
 )
 
 install(DIRECTORY
   srv
-  DESTINATION share/${PROJECT_NAME}
+  DESTINATION share/nuturtle_control
 )
 
 if(BUILD_TESTING)

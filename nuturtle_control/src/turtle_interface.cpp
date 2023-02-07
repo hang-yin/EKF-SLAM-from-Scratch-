@@ -11,9 +11,9 @@ using namespace std::chrono_literals;
 
 class TurtleControl : public rclcpp::Node
 {
-public: 
+public:
     TurtleControl()
-    : Node("turtle_control")
+        : Node("turtle_control")
     {
         // Declare parameters
         this->declare_parameter("wheel_radius", 0.033);
@@ -60,14 +60,14 @@ public:
                                                                             std::bind(&TurtleControl::cmd_vel_callback,
                                                                                       this,
                                                                                       std::placeholders::_1));
-        
+
         // Initialize diff_drive and wheel_velocities
         diff_drive = turtlelib::DiffDrive();
         wheel_velocities = turtlelib::WheelVelocities();
         wheel_velocities.left = 0.0;
         wheel_velocities.right = 0.0;
-        
     }
+
 private:
     // Declare publisher and subscriber objects
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_states_pub_;
@@ -119,16 +119,14 @@ private:
         // Calculate inverse kinematics
         wheel_velocities = diff_drive.inverseKinematics(twist);
         // Set the left and right wheel velocities
-        wheel_commands_msg.left_velocity = wheel_velocities.left / motor_cmd_per_rad_sec_;
-        wheel_commands_msg.right_velocity = wheel_velocities.right / motor_cmd_per_rad_sec_;
+        wheel_commands_msg.left_velocity = (int)(wheel_velocities.left / motor_cmd_per_rad_sec_);
+        wheel_commands_msg.right_velocity = (int)(wheel_velocities.right / motor_cmd_per_rad_sec_);
         // Publish the message
         wheel_commands_pub_->publish(wheel_commands_msg);
     }
-
-
 };
 
-int main(int argc, char * argv[])
+int main(int argc, char *argv[])
 {
     rclcpp::init(argc, argv);
     rclcpp::spin(std::make_shared<TurtleControl>());
