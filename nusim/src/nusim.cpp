@@ -232,17 +232,31 @@ private:
     wheel_velocities.right = right_wheel_velocity_;
     diff_drive_.setWheelVelocities(wheel_velocities);
     diff_drive_.setWheelAngles(wheel_angles);
-    // Update wheel positions
-    left_wheel_position_ += left_wheel_velocity_ / rate_;
-    right_wheel_position_ += right_wheel_velocity_ / rate_;
+
+    // Broadcast transform
+    transformStamped_.header.stamp = this->get_clock()->now();
+    // robot_state_ = diff_drive_.getRobotState();
+    transformStamped_.transform.translation.x = robot_state_.x;
+    transformStamped_.transform.translation.y = robot_state_.y;
+    tf2::Quaternion q;
+    q.setRPY(0.0, 0.0, robot_state_.theta);
+    transformStamped_.transform.rotation.x = q.x();
+    transformStamped_.transform.rotation.y = q.y();
+    transformStamped_.transform.rotation.z = q.z();
+    transformStamped_.transform.rotation.w = q.w();
+    broadcaster_->sendTransform(transformStamped_);
 
     // Publish sensor data
-    int left_encoder = (int)(left_wheel_position_/encoder_ticks_per_rad_) % 4096; // 12-bit encoder
-    int right_encoder = (int)(right_wheel_position_/encoder_ticks_per_rad_) % 4096;
+    int left_encoder = static_cast<int>((left_wheel_position_ + left_wheel_velocity_/rate_)/encoder_ticks_per_rad_) % 4096; // 12-bit encoder
+    int right_encoder = static_cast<int>((right_wheel_position_ + left_wheel_velocity_/rate_)/encoder_ticks_per_rad_) % 4096;
     nuturtlebot_msgs::msg::SensorData sensor_data;
     sensor_data.left_encoder = left_encoder;
     sensor_data.right_encoder = right_encoder;
     sensor_data_pub_->publish(sensor_data);
+
+    // Update wheel positions
+    left_wheel_position_ += left_wheel_velocity_ / rate_;
+    right_wheel_position_ += right_wheel_velocity_ / rate_;
     
     // Create new WheelAngles instance
     wheel_angles.left = left_wheel_position_;
@@ -253,22 +267,10 @@ private:
     // wheel_angles.right = fmod(wheel_angles.right, 2 * turtlelib::PI);
     
     // log wheel angles
-    RCLCPP_INFO(this->get_logger(), "Sim Left wheel angle: %f", wheel_angles.left);
-    RCLCPP_INFO(this->get_logger(), "Sim Right wheel angle: %f", wheel_angles.right);
+    // RCLCPP_INFO(this->get_logger(), "Sim Left wheel angle: %f", wheel_angles.left);
+    // RCLCPP_INFO(this->get_logger(), "Sim Right wheel angle: %f", wheel_angles.right);
     robot_state_ = diff_drive_.forwardKinematics(wheel_angles);
     
-    // Broadcast transform
-    transformStamped_.header.stamp = this->get_clock()->now();
-    transformStamped_.transform.translation.x = robot_state_.x;
-    transformStamped_.transform.translation.y = robot_state_.y;
-    tf2::Quaternion q;
-    q.setRPY(0.0, 0.0, robot_state_.theta);
-    transformStamped_.transform.rotation.x = q.x();
-    transformStamped_.transform.rotation.y = q.y();
-    transformStamped_.transform.rotation.z = q.z();
-    transformStamped_.transform.rotation.w = q.w();
-
-    broadcaster_->sendTransform(transformStamped_);
     // Publish obstacle marker array
     obstacles_pub_->publish(marker_array_);
     // Publish wall marker array

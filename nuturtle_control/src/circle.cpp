@@ -19,8 +19,8 @@ public:
         radius_ = 0.2;
         */
         angular_velocity_ = 0.1;
-        linear_velocity_ = 0.1;
-        radius_ = 1.0;
+        linear_velocity_ = 0.03;
+        radius_ = 0.3;
 
         // Declare cmd_vel publisher
         cmd_vel_pub_ = this->create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);

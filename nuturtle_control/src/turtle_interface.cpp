@@ -44,7 +44,7 @@ public:
         collision_radius_ = this->get_parameter("collision_radius").as_double();
 
         // Declare publisher to joint_states topic with the message type JointState
-        joint_states_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("blue/joint_states", 10);
+        joint_states_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("red/joint_states", 10);
         // Declare publisher to wheel_commands topic with the message type WheelCommands
         wheel_commands_pub_ = this->create_publisher<nuturtlebot_msgs::msg::WheelCommands>("/wheel_cmd", 10);
 
@@ -78,7 +78,7 @@ private:
     // Declare parameters
     double wheel_radius_;
     double track_width_;
-    double motor_cmd_max_;
+    int motor_cmd_max_;
     double motor_cmd_per_rad_sec_;
     double encoder_ticks_per_rad_;
     double collision_radius_;
@@ -97,10 +97,10 @@ private:
         // Set the header
         joint_state_msg.header.stamp = this->now();
         // Set the name of the joints
-        joint_state_msg.name = {"wheel_left_joint", "wheel_right_joint"};
+        joint_state_msg.name = {"/red/wheel_left_link", "/red/wheel_right_link"};
         // Set the position of the joints
-        joint_state_msg.position = {msg->left_encoder * encoder_ticks_per_rad_,
-                                    msg->right_encoder * encoder_ticks_per_rad_};
+        joint_state_msg.position = {static_cast<double>(msg->left_encoder * encoder_ticks_per_rad_),
+                                    static_cast<double>(msg->right_encoder * encoder_ticks_per_rad_)};
         // Set the velocity of the joints
         joint_state_msg.velocity = {wheel_velocities.left, wheel_velocities.right};
         joint_states_pub_->publish(joint_state_msg);
@@ -119,8 +119,25 @@ private:
         // Calculate inverse kinematics
         wheel_velocities = diff_drive.inverseKinematics(twist);
         // Set the left and right wheel velocities
-        wheel_commands_msg.left_velocity = (int)(wheel_velocities.left / motor_cmd_per_rad_sec_);
-        wheel_commands_msg.right_velocity = (int)(wheel_velocities.right / motor_cmd_per_rad_sec_);
+        wheel_commands_msg.left_velocity = static_cast<int>(wheel_velocities.left / motor_cmd_per_rad_sec_);
+        wheel_commands_msg.right_velocity = static_cast<int>(wheel_velocities.right / motor_cmd_per_rad_sec_);
+        // Limit wheel commands to -256 - 256
+        if (wheel_commands_msg.left_velocity > motor_cmd_max_)
+        {
+            wheel_commands_msg.left_velocity = motor_cmd_max_;
+        }
+        else if (wheel_commands_msg.left_velocity < -motor_cmd_max_)
+        {
+            wheel_commands_msg.left_velocity = -motor_cmd_max_;
+        }
+        if (wheel_commands_msg.right_velocity > motor_cmd_max_)
+        {
+            wheel_commands_msg.right_velocity = motor_cmd_max_;
+        }
+        else if (wheel_commands_msg.right_velocity < -motor_cmd_max_)
+        {
+            wheel_commands_msg.right_velocity = -motor_cmd_max_;
+        }
         // Publish the message
         wheel_commands_pub_->publish(wheel_commands_msg);
     }

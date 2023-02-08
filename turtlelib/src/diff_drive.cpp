@@ -66,6 +66,10 @@ namespace turtlelib{
         return state1;
     }
 
+    RobotState DiffDrive::getRobotState(void){
+        return this->state;
+    }
+
     WheelVelocities DiffDrive::inverseKinematics(Twist2D twist){
         WheelVelocities phi_dot;
         if (!almost_equal(twist.y, 0.0)){

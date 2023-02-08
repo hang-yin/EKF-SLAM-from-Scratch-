@@ -68,6 +68,10 @@ namespace turtlelib{
         /// \return robot configuration
         RobotState forwardKinematics(WheelAngles phi);
 
+        /// \brief Gets current robot configuration
+        /// \return robot configuration
+        RobotState getRobotState(void);
+
         /// \brief inverse kinematics: wheel velocities given twist
         /// \param twist robot twist
         /// \return wheel velocities
