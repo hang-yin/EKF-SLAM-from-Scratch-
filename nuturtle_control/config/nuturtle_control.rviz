@@ -255,6 +255,18 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /nusim_node/wall_markers
       Value: true
+    - Class: rviz_default_plugins/Odometry
+      Enabled: true
+      Name: Odom
+      Namespaces:
+        obstacles: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /odom
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
