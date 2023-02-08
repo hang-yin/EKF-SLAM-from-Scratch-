@@ -18,52 +18,53 @@ public:
     : Node("odometry")
     {
         // Declare parameters
-        this->declare_parameter("body_id", "blue/base_footprint");
-        this->declare_parameter("odom_id", "odom");
-        this->declare_parameter("wheel_left", "left_default");
-        this->declare_parameter("wheel_right", "right_default");
+        declare_parameter("body_id", "blue/base_footprint");
+        declare_parameter("odom_id", "odom");
+        declare_parameter("wheel_left", "left_default");
+        declare_parameter("wheel_right", "right_default");
     
         // Check whether parameters are specified
-        if (!this->has_parameter("body_id")) {
+        if (!has_parameter("body_id")) {
             RCLCPP_ERROR(this->get_logger(), "body_id is not specified");
             rclcpp::shutdown();
         }
-        if (!this->has_parameter("wheel_left") || !this->has_parameter("wheel_right")) {
+
+        if (!has_parameter("wheel_left") || !has_parameter("wheel_right")) {
             RCLCPP_ERROR(this->get_logger(), "name of wheel joints not specified");
             rclcpp::shutdown();
         }
 
         // Get parameters
-        body_id_ = this->get_parameter("body_id").as_string();
-        if (this->has_parameter("odom_id")) {
-            odom_id_ = this->get_parameter("odom_id").as_string();
+        body_id_ = get_parameter("body_id").as_string();
+        if (has_parameter("odom_id")) {
+            odom_id_ = get_parameter("odom_id").as_string();
         }
-        wheel_left_ = this->get_parameter("wheel_left").as_string();
-        wheel_right_ = this->get_parameter("wheel_right").as_string();
+        wheel_left_ = get_parameter("wheel_left").as_string();
+        wheel_right_ = get_parameter("wheel_right").as_string();
 
         // Create publisher for odometry
-        odom_pub_ = this->create_publisher<nav_msgs::msg::Odometry>("/odom", 10);
+        odom_pub_ = create_publisher<nav_msgs::msg::Odometry>("/odom", 10);
 
         // Create subscriber for joint state
-        joint_sub_ = this->create_subscription<sensor_msgs::msg::JointState>("red/joint_states",
-                                                                             10,
-                                                                             std::bind(&OdometryNode::joint_callback,
-                                                                                       this,
-                                                                                       std::placeholders::_1));
-        
+        joint_sub_ = create_subscription<sensor_msgs::msg::JointState>("red/joint_states",
+                                                                       10,
+                                                                       std::bind(&OdometryNode::joint_callback,
+                                                                       this,
+                                                                       std::placeholders::_1));
+
         // Create a transform broadcaster
         tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
 
         // Create a service to reset odometry
-        reset_srv_ = this->create_service<nuturtle_control::srv::InitialPose>("~/initial_pose",
-                                                                              std::bind(&OdometryNode::initial_pose_callback,
-                                                                                        this,
-                                                                                        std::placeholders::_1,
-                                                                                        std::placeholders::_2));
+        reset_srv_ = create_service<nuturtle_control::srv::InitialPose>("~/initial_pose",
+                                                                        std::bind(&OdometryNode::initial_pose_callback,
+                                                                                  this,
+                                                                                  std::placeholders::_1,
+                                                                                  std::placeholders::_2));
         
         // Create a timer to publish odometry
         rate_ = 200.0;
-        timer_ = this->create_wall_timer(1s / rate_, std::bind(&OdometryNode::timer_callback, this));
+        timer_ = create_wall_timer(1s / rate_, std::bind(&OdometryNode::timer_callback, this));
 
         // Initialize odometry
         odom_.header.frame_id = odom_id_;
@@ -101,7 +102,6 @@ public:
         right_wheel_pos_ = 0.0;
         left_wheel_vel_ = 0.0;
         right_wheel_vel_ = 0.0;
-
     }
 
 private:
@@ -126,27 +126,12 @@ private:
     double right_wheel_vel_;
     geometry_msgs::msg::TransformStamped odom_tf_;
     double rate_;
-    turtlelib::WheelVelocities old_wheel_velocities_;
-    turtlelib::WheelAngles old_wheel_angles_;
 
     // Callback function for joint state
     void joint_callback(const sensor_msgs::msg::JointState::SharedPtr msg)
     {
         // Check if joint state message is valid
-        
         if (msg->name.size() != 2 || msg->position.size() != 2 || msg->velocity.size() != 2) {
-            /*
-            diff_drive_.setWheelVelocities(old_wheel_velocities_);
-            diff_drive_.setWheelAngles(old_wheel_angles_);
-            turtlelib::WheelAngles new_wheel_angles;
-            new_wheel_angles.left = old_wheel_angles_.left + old_wheel_velocities_.left / rate_;
-            new_wheel_angles.right = old_wheel_angles_.right + old_wheel_velocities_.right / rate_;
-            old_wheel_angles_ = new_wheel_angles;
-            turtlelib::RobotState robot_state = diff_drive_.forwardKinematics(new_wheel_angles);
-            x_ = robot_state.x;
-            y_ = robot_state.y;
-            theta_ = robot_state.theta;
-            */
             return;
         }
         
@@ -165,21 +150,12 @@ private:
         diff_drive_.setWheelAngles(wheel_angles);
         diff_drive_.setWheelVelocities(wheel_velocities);
 
-        // experimenting
-        // old_wheel_velocities_ = wheel_velocities;
-
         // Get new angles
         turtlelib::WheelAngles new_wheel_angles;
-        new_wheel_angles.left = left_wheel_pos_ + left_wheel_vel_ / rate_;//(rate_/2.0);
-        new_wheel_angles.right = right_wheel_pos_ + right_wheel_vel_ / rate_;//(rate_/2.0);
-
-        // experimenting
-        // old_wheel_angles_ = new_wheel_angles;
+        new_wheel_angles.left = left_wheel_pos_ + left_wheel_vel_ / rate_;
+        new_wheel_angles.right = right_wheel_pos_ + right_wheel_vel_ / rate_;
 
         // Update x, y, theta through forward kinematics
-        // log new wheel angles
-        // RCLCPP_INFO(this->get_logger(), "Odom Left wheel angle: %f", new_wheel_angles.left);
-        // RCLCPP_INFO(this->get_logger(), "Odom Right wheel angle: %f", new_wheel_angles.right);
         turtlelib::RobotState robot_state = diff_drive_.forwardKinematics(new_wheel_angles);
         x_ = robot_state.x;
         y_ = robot_state.y;
@@ -187,18 +163,13 @@ private:
     }
 
     // Callback function for initial_pose service
-    void initial_pose_callback(const nuturtle_control::srv::InitialPose::Request::SharedPtr req,
-                               const nuturtle_control::srv::InitialPose::Response::SharedPtr res)
+    void initial_pose_callback(const nuturtle_control::srv::InitialPose::Request::SharedPtr,
+                               const nuturtle_control::srv::InitialPose::Response::SharedPtr)
     {
         x_ = 0.0;
         y_ = 0.0;
         theta_ = 0.0;
         diff_drive_ = turtlelib::DiffDrive();
-        // the request contains the configuration of the robot
-        // TODO: Set the configuration of the robot
-        // the response is empty
-        (void)req;
-        (void)res;
     }
 
     void timer_callback()
@@ -217,8 +188,6 @@ private:
         odom_.pose.pose.orientation.y = q.y();
         odom_.pose.pose.orientation.z = q.z();
         odom_.pose.pose.orientation.w = q.w();
-
-        // TODO: Update twist
         
         // Publish odometry
         odom_pub_->publish(odom_);

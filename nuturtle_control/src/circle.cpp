@@ -7,7 +7,6 @@ using namespace std::chrono_literals;
 
 class Circle : public rclcpp::Node
 {
-
 public: 
     Circle()
     : Node("circle")
@@ -23,32 +22,32 @@ public:
         radius_ = 0.3;
 
         // Declare cmd_vel publisher
-        cmd_vel_pub_ = this->create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
+        cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
 
         // Declare control service
-        control_srv_ = this->create_service<nuturtle_control::srv::Control>("~/control",
-                                                                            std::bind(&Circle::control_callback,
-                                                                                        this,
-                                                                                        std::placeholders::_1,
-                                                                                        std::placeholders::_2));
-        
+        control_srv_ = create_service<nuturtle_control::srv::Control>("~/control",
+                                                                      std::bind(&Circle::control_callback,
+                                                                                this,
+                                                                                std::placeholders::_1,
+                                                                                std::placeholders::_2));
+
         // Declare reverse service
-        reverse_srv_ = this->create_service<std_srvs::srv::Empty>("~/reverse",
-                                                                  std::bind(&Circle::reverse_callback,
-                                                                            this,
-                                                                            std::placeholders::_1,
-                                                                            std::placeholders::_2));
-        
+        reverse_srv_ = create_service<std_srvs::srv::Empty>("~/reverse",
+                                                            std::bind(&Circle::reverse_callback,
+                                                                      this,
+                                                                      std::placeholders::_1,
+                                                                      std::placeholders::_2));
+
         // Declare stop service
-        stop_srv_ = this->create_service<std_srvs::srv::Empty>("~/stop",
-                                                               std::bind(&Circle::stop_callback,
-                                                                         this,
-                                                                         std::placeholders::_1,
-                                                                         std::placeholders::_2));
-        
+        stop_srv_ = create_service<std_srvs::srv::Empty>("~/stop",
+                                                         std::bind(&Circle::stop_callback,
+                                                                   this,
+                                                                   std::placeholders::_1,
+                                                                   std::placeholders::_2));
+
         // Create a timer to publish cmd_vel
         rate_ = 200.0;
-        cmd_vel_timer_ = this->create_wall_timer(1s / rate_, std::bind(&Circle::timer_callback, this));
+        cmd_vel_timer_ = create_wall_timer(1s / rate_, std::bind(&Circle::timer_callback, this));
     }
 
 private:
@@ -64,33 +63,27 @@ private:
 
     // Implement control service
     void control_callback(const nuturtle_control::srv::Control::Request::SharedPtr request,
-                          const nuturtle_control::srv::Control::Response::SharedPtr response)
+                          const nuturtle_control::srv::Control::Response::SharedPtr)
     {
         angular_velocity_ = request->velocity;
         radius_ = request->radius;
         linear_velocity_ = angular_velocity_ * radius_;
-        (void)response;
     }
 
     // Implement reverse service
-    void reverse_callback(const std_srvs::srv::Empty::Request::SharedPtr request,
-                          const std_srvs::srv::Empty::Response::SharedPtr response)
+    void reverse_callback(const std_srvs::srv::Empty::Request::SharedPtr,
+                          const std_srvs::srv::Empty::Response::SharedPtr)
     {
         angular_velocity_ = -angular_velocity_;
         linear_velocity_ = -linear_velocity_;
-        (void)request;
-        (void)response;
-
     }
 
     // Implement stop service
-    void stop_callback(const std_srvs::srv::Empty::Request::SharedPtr request,
-                       const std_srvs::srv::Empty::Response::SharedPtr response)
+    void stop_callback(const std_srvs::srv::Empty::Request::SharedPtr,
+                       const std_srvs::srv::Empty::Response::SharedPtr)
     {
         angular_velocity_ = 0.0;
         linear_velocity_ = 0.0;
-        (void)request;
-        (void)response;
     }
 
     // Implement cmd_vel timer

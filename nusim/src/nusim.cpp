@@ -25,25 +25,25 @@ public:
   : Node("nusim")
   {
     // Declare parameters
-    this->declare_parameter("rate", 200.0);
-    this->declare_parameter("x0", 0.0);
-    this->declare_parameter("y0", 0.0);
-    this->declare_parameter("theta0", 0.0);
-    this->declare_parameter("obstacles_x", std::vector<double>());
-    this->declare_parameter("obstacles_y", std::vector<double>());
-    this->declare_parameter("obstacles_r", 0.0);
-    this->declare_parameter("encoder_ticks_per_rad", 0.00153398078);
-    this->declare_parameter("motor_cmd_per_rad_sec", 0.024);
+    declare_parameter("rate", 200.0);
+    declare_parameter("x0", 0.0);
+    declare_parameter("y0", 0.0);
+    declare_parameter("theta0", 0.0);
+    declare_parameter("obstacles_x", std::vector<double>());
+    declare_parameter("obstacles_y", std::vector<double>());
+    declare_parameter("obstacles_r", 0.0);
+    declare_parameter("encoder_ticks_per_rad", 0.00153398078);
+    declare_parameter("motor_cmd_per_rad_sec", 0.024);
 
     // Check obstacles input, if length of vectors are not equal, exit node
-    std::vector<double> obstacles_x = this->get_parameter("obstacles_x").as_double_array();
-    std::vector<double> obstacles_y = this->get_parameter("obstacles_y").as_double_array();
+    const auto obstacles_x = get_parameter("obstacles_x").as_double_array();
+    const auto obstacles_y = get_parameter("obstacles_y").as_double_array();
     if (obstacles_x.size() != obstacles_y.size()) {
       RCLCPP_ERROR(this->get_logger(), "Length of obstacles vectors are not equal");
       rclcpp::shutdown();
     }
 
-    double obstacles_r = this->get_parameter("obstacles_r").as_double();
+    auto obstacles_r = get_parameter("obstacles_r").as_double();
     // Check obstacles input, if radius is negative, exit node
     if (obstacles_r < 0) {
       RCLCPP_ERROR(this->get_logger(), "Radius of obstacles cannot be negative");
@@ -51,20 +51,19 @@ public:
     }
 
     // Create publisher for obstacles
-    obstacles_pub_ =
-      this->create_publisher<visualization_msgs::msg::MarkerArray>("~/obstacles", 10);
+    obstacles_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("~/obstacles", 10);
 
     // Initialize marker array
     marker_array_.markers.resize(obstacles_x.size());
-    for (int i = 0; i < int(obstacles_x.size()); i++) {
+    for (size_t i = 0; i < obstacles_x.size(); i++) {
       marker_array_.markers[i].header.frame_id = "nusim/world";
-      marker_array_.markers[i].header.stamp = this->get_clock()->now();
+      marker_array_.markers[i].header.stamp = get_clock()->now();
       marker_array_.markers[i].ns = "obstacles";
       marker_array_.markers[i].id = i;
       marker_array_.markers[i].type = visualization_msgs::msg::Marker::CYLINDER;
       marker_array_.markers[i].action = visualization_msgs::msg::Marker::ADD;
-      marker_array_.markers[i].pose.position.x = obstacles_x[i];
-      marker_array_.markers[i].pose.position.y = obstacles_y[i];
+      marker_array_.markers[i].pose.position.x = obstacles_x.at(i);
+      marker_array_.markers[i].pose.position.y = obstacles_y.at(i);
       marker_array_.markers[i].pose.position.z = 0;
       marker_array_.markers[i].pose.orientation.x = 0.0;
       marker_array_.markers[i].pose.orientation.y = 0.0;
@@ -83,19 +82,19 @@ public:
     timestep_ = 0;
 
     // Create publisher for timestep
-    timestep_pub_ = this->create_publisher<std_msgs::msg::UInt64>("~/timestep", 10);
+    timestep_pub_ = create_publisher<std_msgs::msg::UInt64>("~/timestep", 10);
 
     // Set rate
-    rate_ = this->get_parameter("rate").as_double();
+    rate_ = get_parameter("rate").as_double();
     if (rate_ <= 0) {
       rate_ = 200.0;
     }
 
     // Create timer at frequency of rate
-    timer_ = this->create_wall_timer(1s / rate_, std::bind(&NuSimNode::timer_callback, this));
+    timer_ = create_wall_timer(1s / rate_, std::bind(&NuSimNode::timer_callback, this));
 
     // Create reset service of empty type
-    reset_srv_ = this->create_service<std_srvs::srv::Empty>(
+    reset_srv_ = create_service<std_srvs::srv::Empty>(
       "~/reset",
       std::bind(
         &NuSimNode::reset_callback,
@@ -104,7 +103,7 @@ public:
         std::placeholders::_2));
 
     // Create teleport service of Teleport type
-    teleport_srv_ = this->create_service<nusim::srv::Teleport>(
+    teleport_srv_ = create_service<nusim::srv::Teleport>(
       "~/teleport",
       std::bind(
         &NuSimNode::teleport_callback,
@@ -113,9 +112,9 @@ public:
         std::placeholders::_2));
 
     // Set initial pose
-    x0_ = this->get_parameter("x0").as_double();
-    y0_ = this->get_parameter("y0").as_double();
-    theta0_ = this->get_parameter("theta0").as_double();
+    x0_ = get_parameter("x0").as_double();
+    y0_ = get_parameter("y0").as_double();
+    theta0_ = get_parameter("theta0").as_double();
     q0_.setRPY(0, 0, theta0_);
 
     // Create transform broadcaster
@@ -133,11 +132,11 @@ public:
     transformStamped_.transform.rotation.w = q0_.w();
 
     // Create subscriber for red/wheel_cmd topic
-    wheel_cmd_sub_ = this->create_subscription<nuturtlebot_msgs::msg::WheelCommands>("/wheel_cmd",
-                                                                                     10,
-                                                                                     std::bind(&NuSimNode::wheel_cmd_callback,
-                                                                                     this,
-                                                                                     std::placeholders::_1));
+    wheel_cmd_sub_ = create_subscription<nuturtlebot_msgs::msg::WheelCommands>("/wheel_cmd",
+                                                                               10,
+                                                                               std::bind(&NuSimNode::wheel_cmd_callback,
+                                                                               this,
+                                                                               std::placeholders::_1));
 
     // Initialize wheel velocities
     left_wheel_velocity_ = 0.0;
@@ -148,22 +147,22 @@ public:
     right_wheel_position_ = 0.0;
 
     // Create publisher to red/sensor_data topic with nuturtlebot_msgs/SensorData message type
-    sensor_data_pub_ = this->create_publisher<nuturtlebot_msgs::msg::SensorData>("/sensor_data", 10);
+    sensor_data_pub_ = create_publisher<nuturtlebot_msgs::msg::SensorData>("/sensor_data", 10);
 
     // Initialize parameters
-    encoder_ticks_per_rad_ = this->get_parameter("encoder_ticks_per_rad").as_double();
-    motor_cmd_per_rad_sec_ = this->get_parameter("motor_cmd_per_rad_sec").as_double();
+    encoder_ticks_per_rad_ = get_parameter("encoder_ticks_per_rad").as_double();
+    motor_cmd_per_rad_sec_ = get_parameter("motor_cmd_per_rad_sec").as_double();
 
     // Create publisher for wall marker array
-    wall_marker_array_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("~/wall_markers", 10);
+    wall_marker_array_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("~/wall_markers", 10);
 
     // Declare wall-related parameters
-    this->declare_parameter("~x_length", 10.0);
-    this->declare_parameter("~y_length", 10.0);
+    declare_parameter("~x_length", 10.0);
+    declare_parameter("~y_length", 10.0);
 
     // Get wall-related parameters
-    wall_x_ = this->get_parameter("~x_length").as_double();
-    wall_y_ = this->get_parameter("~y_length").as_double();
+    wall_x_ = get_parameter("~x_length").as_double();
+    wall_y_ = get_parameter("~y_length").as_double();
 
     // Initialize wall marker array centered at (0,0), 0.25m tall, and 0.1m thick
     wall_marker_array_.markers.resize(4);
@@ -212,7 +211,6 @@ public:
     wall_marker_array_.markers[3].scale.x = wall_x_ + 0.2;
     wall_marker_array_.markers[3].scale.y = 0.1;
     wall_marker_array_.markers[3].scale.z = 0.25;
-
   }
 
 private:
@@ -278,12 +276,10 @@ private:
     // Increment timestep
     timestep_++;
   }
-  void reset_callback(
-    const std::shared_ptr<std_srvs::srv::Empty::Request> request,
-    std::shared_ptr<std_srvs::srv::Empty::Response> response)
+
+  void reset_callback(const std::shared_ptr<std_srvs::srv::Empty::Request>,
+                      std::shared_ptr<std_srvs::srv::Empty::Response>)
   {
-    (void)request;
-    (void)response;
     // Reset timestep to zero
     timestep_ = 0;
     // Reset transform
@@ -294,12 +290,10 @@ private:
     transformStamped_.transform.rotation.z = q0_.z();
     transformStamped_.transform.rotation.w = q0_.w();
   }
-  void teleport_callback(
-    const std::shared_ptr<nusim::srv::Teleport::Request> request,
-    std::shared_ptr<nusim::srv::Teleport::Response> response)
+
+  void teleport_callback(const std::shared_ptr<nusim::srv::Teleport::Request> request,
+                         std::shared_ptr<nusim::srv::Teleport::Response>)
   {
-    (void)request;
-    (void)response;
     // Set transform
     transformStamped_.transform.translation.x = request->x;
     transformStamped_.transform.translation.y = request->y;
@@ -310,12 +304,14 @@ private:
     transformStamped_.transform.rotation.z = q.z();
     transformStamped_.transform.rotation.w = q.w();
   }
+
   void wheel_cmd_callback(const nuturtlebot_msgs::msg::WheelCommands::SharedPtr msg)
   {
     // Set wheel velocities
     left_wheel_velocity_ = static_cast<double>(msg->left_velocity) * motor_cmd_per_rad_sec_;
     right_wheel_velocity_ = static_cast<double>(msg->right_velocity) * motor_cmd_per_rad_sec_;
   }
+
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr timestep_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr obstacles_pub_;
@@ -345,7 +341,6 @@ private:
   rclcpp::Publisher<nuturtlebot_msgs::msg::SensorData>::SharedPtr sensor_data_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr wall_marker_array_pub_;
   turtlelib::RobotState robot_state_;
-
 };
 
 int main(int argc, char * argv[])
