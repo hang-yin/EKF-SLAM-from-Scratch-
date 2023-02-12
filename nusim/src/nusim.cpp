@@ -10,6 +10,7 @@
 #include <nuturtlebot_msgs/msg/sensor_data.hpp>
 #include "turtlelib/rigid2d.hpp"
 #include "turtlelib/diff_drive.hpp"
+#include "sensor_msgs/msg/laser_scan.hpp"
 #include <chrono>
 #include <functional>
 #include <memory>
@@ -40,6 +41,14 @@ public:
     declare_parameter("basic_sensor_variance", 0.01);
     declare_parameter("max_range", 10.0);
     declare_parameter("collision_radius", 0.11);
+    declare_parameter("min_lidar_range", 0.16);
+    declare_parameter("max_lidar_range", 8.0);
+    declare_parameter("angle_increment", 0.0174532924)
+    declare_parameter("number_of_samples", 360)
+    declare_parameter("resolution", 0.01)
+    declare_parameter("noise_level", 0.01)
+    declare_parameter("angle_min", 0.0)
+    declare_parameter("angle_max", 6.283185307)
 
     // Get input_noise, slip_fraction, basic sensor variance, and max range
     input_noise_ = get_parameter("input_noise").as_double();
@@ -47,6 +56,14 @@ public:
     basic_sensor_variance_ = get_parameter("basic_sensor_variance").as_double();
     max_range_ = get_parameter("max_range").as_double();
     collision_radius_ = get_parameter("collision_radius").as_double();
+    min_lidar_range_ = get_parameter("min_lidar_range").as_double();
+    max_lidar_range_ = get_parameter("max_lidar_range").as_double();
+    angle_increment_ = get_parameter("angle_increment").as_double();
+    number_of_samples_ = get_parameter("number_of_samples").as_double();
+    resolution_ = get_parameter("resolution").as_double();
+    noise_level_ = get_parameter("noise_level").as_double();
+    angle_min_ = get_parameter("angle_min").as_double();
+    angle_max_ = get_parameter("angle_max").as_double();
 
     // Check obstacles input, if length of vectors are not equal, exit node
     const auto obstacles_x = get_parameter("obstacles_x").as_double_array();
@@ -238,6 +255,12 @@ public:
 
     // Create a fake sensor timer that runs at 5Hz
     fake_sensor_timer_ = create_wall_timer(1s / rate_, std::bind(&NuSimNode::fake_sensor_callback, this));
+
+    // Create laser scan publisher
+    laser_scan_pub_ = create_publisher<sensor_msgs::msg::LaserScan>("/scan", 10);
+
+    // Create a laser scan timer that runs at 5Hz
+    laser_scan_timer_ = create_wall_timer(1s / 5.0, std::bind(&NuSimNode::laser_scan_callback, this));
   }
 
 private:
@@ -424,6 +447,25 @@ private:
     fake_sensor_pub_->publish(fake_sensor_marker_array_);
   }
 
+  void laser_scan_callback(){
+    laser_scan_msg_.header.stemp = this->get_clock()->now();
+    laser_scan_msg_.header.frame_id = "red/base_scan";
+    laser_scan_msg_.angle_min = angle_min_;
+    laser_scan_msg_.angle_max = angle_max_;
+    laser_scan_msg_.angle_increment = angle_increment_;
+    laser_scan_msg_.time_increment = 2.98699997074e-05;
+    laser_scan_msg_.scan_time = 0.1;
+    laser_scan_msg_.range_min = min_lidar_range_;
+    laser_scan_msg_.range_max = max_lidar_range_;
+
+    laser_scan_msg_.ranges.resize(number_of_samples_);
+    for (auto i = 0; i < number_of_samples_; i++){
+      // deal with the obstacles
+      // deal with the walls
+    }
+
+  }
+
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr timestep_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr obstacles_pub_;
@@ -458,6 +500,14 @@ private:
   double basic_sensor_variance_;
   double max_range_;
   double collision_radius_;
+  double min_lidar_range_;
+  double max_lidar_range_;
+  double angle_increment_;
+  double number_of_samples_;
+  double resolution_;
+  double noise_level_;
+  double angle_min_;
+  double angle_max_;
   std::random_device rd{}; // obtain a random number from hardware
   std::mt19937 gen_{rd()}; // seed the generator
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr fake_sensor_pub_;
@@ -466,6 +516,9 @@ private:
   std::vector<double> obstacles_y_;
   double obstacles_r_;
   rclcpp::TimerBase::SharedPtr fake_sensor_timer_;
+  rclcpp::Publisher<sensor_msgs::msg::LaserScan>::SharedPtr laser_scan_pub_;
+  rclcpp::TimerBase::SharedPtr laser_scan_timer_;
+  sensor_msgs::msg::LaserScan laser_scan_msg_;
 };
 
 int main(int argc, char *argv[])
