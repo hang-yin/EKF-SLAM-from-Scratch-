@@ -15,6 +15,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <random>
 
 using namespace std::chrono_literals;
 
@@ -34,6 +35,12 @@ public:
     declare_parameter("obstacles_r", 0.0);
     declare_parameter("encoder_ticks_per_rad", 0.00153398078);
     declare_parameter("motor_cmd_per_rad_sec", 0.024);
+    declare_parameter("input_noise", 0.0);
+    declare_parameter("slip_fraction", 1.0);
+
+    // Get input_noise and slip_fraction
+    input_noise_ = get_parameter("input_noise").as_double();
+    slip_fraction_ = get_parameter("slip_fraction").as_double();
 
     // Check obstacles input, if length of vectors are not equal, exit node
     const auto obstacles_x = get_parameter("obstacles_x").as_double_array();
@@ -180,8 +187,8 @@ public:
       wall_marker_array_.markers[i].pose.orientation.w = 1.0;
       wall_marker_array_.markers[i].color.a = 1.0;
       wall_marker_array_.markers[i].color.r = 1.0;
-      wall_marker_array_.markers[i].color.g = 1.0;
-      wall_marker_array_.markers[i].color.b = 1.0;
+      wall_marker_array_.markers[i].color.g = 0.0;
+      wall_marker_array_.markers[i].color.b = 0.0;
     }
 
     // first wall
@@ -221,16 +228,6 @@ private:
     msg.data = timestep_;
     timestep_pub_->publish(msg);
 
-    // Update transform
-    turtlelib::WheelAngles wheel_angles;
-    wheel_angles.left = left_wheel_position_;
-    wheel_angles.right = right_wheel_position_;
-    turtlelib::WheelVelocities wheel_velocities;
-    wheel_velocities.left = left_wheel_velocity_;
-    wheel_velocities.right = right_wheel_velocity_;
-    diff_drive_.setWheelVelocities(wheel_velocities);
-    diff_drive_.setWheelAngles(wheel_angles);
-
     // Broadcast transform
     transformStamped_.header.stamp = this->get_clock()->now();
     // robot_state_ = diff_drive_.getRobotState();
@@ -252,23 +249,6 @@ private:
     sensor_data.right_encoder = right_encoder;
     sensor_data_pub_->publish(sensor_data);
 
-    // Update wheel positions
-    left_wheel_position_ += left_wheel_velocity_ / rate_;
-    right_wheel_position_ += right_wheel_velocity_ / rate_;
-    
-    // Create new WheelAngles instance
-    wheel_angles.left = left_wheel_position_;
-    wheel_angles.right = right_wheel_position_;
-    
-    // normalize wheel_angles so that they are between 0 and 2pi
-    // wheel_angles.left = fmod(wheel_angles.left, 2 * turtlelib::PI);
-    // wheel_angles.right = fmod(wheel_angles.right, 2 * turtlelib::PI);
-    
-    // log wheel angles
-    // RCLCPP_INFO(this->get_logger(), "Sim Left wheel angle: %f", wheel_angles.left);
-    // RCLCPP_INFO(this->get_logger(), "Sim Right wheel angle: %f", wheel_angles.right);
-    robot_state_ = diff_drive_.forwardKinematics(wheel_angles);
-    
     // Publish obstacle marker array
     obstacles_pub_->publish(marker_array_);
     // Publish wall marker array
@@ -307,9 +287,43 @@ private:
 
   void wheel_cmd_callback(const nuturtlebot_msgs::msg::WheelCommands::SharedPtr msg)
   {
-    // Set wheel velocities
-    left_wheel_velocity_ = static_cast<double>(msg->left_velocity) * motor_cmd_per_rad_sec_;
-    right_wheel_velocity_ = static_cast<double>(msg->right_velocity) * motor_cmd_per_rad_sec_;
+    std::normal_distribution<double> vel_dist(0.0, input_noise_);
+    left_wheel_velocity_ = static_cast<double>(msg->left_velocity);
+    right_wheel_velocity_ = static_cast<double>(msg->right_velocity);
+    left_wheel_velocity_ *= motor_cmd_per_rad_sec_;
+    right_wheel_velocity_ *= motor_cmd_per_rad_sec_;
+
+    if (msg->left_velocity != 0){
+      left_wheel_velocity_ += vel_dist(gen_);
+    }
+    if (msg->right_velocity != 0){
+      right_wheel_velocity_ += vel_dist(gen_);
+    }
+
+    // Update wheel positions
+    left_wheel_position_ += left_wheel_velocity_ / rate_;
+    right_wheel_position_ += right_wheel_velocity_ / rate_;
+
+    // Update robot state
+    turtlelib::WheelAngles new_wheel_angles;
+    new_wheel_angles.left = left_wheel_position_;
+    new_wheel_angles.right = right_wheel_position_;
+    robot_state_ = diff_drive_.forwardKinematics(new_wheel_angles);
+
+    // Add slip noise
+    std::uniform_real_distribution<double> slip_dist(-slip_fraction_, slip_fraction_);
+    left_wheel_position_ += slip_dist(gen_);
+    right_wheel_position_ += slip_dist(gen_);
+
+    // Update wheel angles
+    turtlelib::WheelAngles wheel_angles;
+    wheel_angles.left = left_wheel_position_;
+    wheel_angles.right = right_wheel_position_;
+    turtlelib::WheelVelocities wheel_velocities;
+    wheel_velocities.left = left_wheel_velocity_;
+    wheel_velocities.right = right_wheel_velocity_;
+    diff_drive_.setWheelVelocities(wheel_velocities);
+    diff_drive_.setWheelAngles(wheel_angles);
   }
 
   rclcpp::TimerBase::SharedPtr timer_;
@@ -341,6 +355,10 @@ private:
   rclcpp::Publisher<nuturtlebot_msgs::msg::SensorData>::SharedPtr sensor_data_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr wall_marker_array_pub_;
   turtlelib::RobotState robot_state_;
+  double input_noise_;
+  double slip_fraction_;
+  std::random_device rd{};  // obtain a random number from hardware
+  std::mt19937 gen_{rd()}; // seed the generator
 };
 
 int main(int argc, char * argv[])
