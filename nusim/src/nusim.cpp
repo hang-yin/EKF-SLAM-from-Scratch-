@@ -37,14 +37,16 @@ public:
     declare_parameter("motor_cmd_per_rad_sec", 0.024);
     declare_parameter("input_noise", 0.0);
     declare_parameter("slip_fraction", 0.0);
-    declare_parameter("basic_sensor_variance", 0.005);
+    declare_parameter("basic_sensor_variance", 0.01);
     declare_parameter("max_range", 10.0);
+    declare_parameter("collision_radius", 0.11);
 
     // Get input_noise, slip_fraction, basic sensor variance, and max range
     input_noise_ = get_parameter("input_noise").as_double();
     slip_fraction_ = get_parameter("slip_fraction").as_double();
     basic_sensor_variance_ = get_parameter("basic_sensor_variance").as_double();
     max_range_ = get_parameter("max_range").as_double();
+    collision_radius_ = get_parameter("collision_radius").as_double();
 
     // Check obstacles input, if length of vectors are not equal, exit node
     const auto obstacles_x = get_parameter("obstacles_x").as_double_array();
@@ -213,7 +215,7 @@ public:
     // second wall
     wall_marker_array_.markers[1].pose.position.x = 0.0;
     wall_marker_array_.markers[1].pose.position.y = -wall_y_ / 2 + 0.05;
-    wall_marker_array_.markers[1].scale.x = wall_x_ + 0.2;
+    wall_marker_array_.markers[1].scale.x = wall_x_;
     wall_marker_array_.markers[1].scale.y = 0.1;
     wall_marker_array_.markers[1].scale.z = 0.25;
 
@@ -227,7 +229,7 @@ public:
     // fourth wall
     wall_marker_array_.markers[3].pose.position.x = 0.0;
     wall_marker_array_.markers[3].pose.position.y = wall_y_ / 2 - 0.05;
-    wall_marker_array_.markers[3].scale.x = wall_x_ + 0.2;
+    wall_marker_array_.markers[3].scale.x = wall_x_;
     wall_marker_array_.markers[3].scale.y = 0.1;
     wall_marker_array_.markers[3].scale.z = 0.25;
 
@@ -329,6 +331,19 @@ private:
     new_wheel_angles.left = left_wheel_position_;
     new_wheel_angles.right = right_wheel_position_;
     robot_state_ = diff_drive_.forwardKinematics(new_wheel_angles);
+
+    // Collision detection
+    for (int i = 0; i < int(obstacles_x_.size()); i++){
+      double distance = sqrt(pow(robot_state_.x - obstacles_x_[i], 2) + pow(robot_state_.y - obstacles_y_[i], 2));
+      if (distance < (obstacles_r_ + collision_radius_)){
+        double collision_angle = atan2(robot_state_.y - obstacles_y_[i], robot_state_.x - obstacles_x_[i]);
+        turtlelib::RobotState new_robot_state;
+        new_robot_state.x = obstacles_x_[i] + (collision_radius_+obstacles_r_) * cos(collision_angle);
+        new_robot_state.y = obstacles_y_[i] + (collision_radius_+obstacles_r_) * sin(collision_angle);
+        new_robot_state.theta = robot_state_.theta;
+        diff_drive_.setState(new_robot_state);
+      }
+    }
 
     // Add slip noise
     std::uniform_real_distribution<double> slip_dist(-slip_fraction_, slip_fraction_);
@@ -442,6 +457,7 @@ private:
   double slip_fraction_;
   double basic_sensor_variance_;
   double max_range_;
+  double collision_radius_;
   std::random_device rd{}; // obtain a random number from hardware
   std::mt19937 gen_{rd()}; // seed the generator
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr fake_sensor_pub_;
