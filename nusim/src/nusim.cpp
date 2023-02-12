@@ -23,7 +23,7 @@ class NuSimNode : public rclcpp::Node
 {
 public:
   NuSimNode()
-  : Node("nusim")
+      : Node("nusim")
   {
     // Declare parameters
     declare_parameter("rate", 200.0);
@@ -36,23 +36,29 @@ public:
     declare_parameter("encoder_ticks_per_rad", 0.00153398078);
     declare_parameter("motor_cmd_per_rad_sec", 0.024);
     declare_parameter("input_noise", 0.0);
-    declare_parameter("slip_fraction", 1.0);
+    declare_parameter("slip_fraction", 0.0);
+    declare_parameter("basic_sensor_variance", 0.005);
+    declare_parameter("max_range", 10.0);
 
-    // Get input_noise and slip_fraction
+    // Get input_noise, slip_fraction, basic sensor variance, and max range
     input_noise_ = get_parameter("input_noise").as_double();
     slip_fraction_ = get_parameter("slip_fraction").as_double();
+    basic_sensor_variance_ = get_parameter("basic_sensor_variance").as_double();
+    max_range_ = get_parameter("max_range").as_double();
 
     // Check obstacles input, if length of vectors are not equal, exit node
     const auto obstacles_x = get_parameter("obstacles_x").as_double_array();
     const auto obstacles_y = get_parameter("obstacles_y").as_double_array();
-    if (obstacles_x.size() != obstacles_y.size()) {
+    if (obstacles_x.size() != obstacles_y.size())
+    {
       RCLCPP_ERROR(this->get_logger(), "Length of obstacles vectors are not equal");
       rclcpp::shutdown();
     }
 
     auto obstacles_r = get_parameter("obstacles_r").as_double();
     // Check obstacles input, if radius is negative, exit node
-    if (obstacles_r < 0) {
+    if (obstacles_r < 0)
+    {
       RCLCPP_ERROR(this->get_logger(), "Radius of obstacles cannot be negative");
       rclcpp::shutdown();
     }
@@ -61,8 +67,12 @@ public:
     obstacles_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("~/obstacles", 10);
 
     // Initialize marker array
+    obstacles_x_ = obstacles_x;
+    obstacles_y_ = obstacles_y;
+    obstacles_r_ = obstacles_r;
     marker_array_.markers.resize(obstacles_x.size());
-    for (size_t i = 0; i < obstacles_x.size(); i++) {
+    for (size_t i = 0; i < obstacles_x.size(); i++)
+    {
       marker_array_.markers[i].header.frame_id = "nusim/world";
       marker_array_.markers[i].header.stamp = get_clock()->now();
       marker_array_.markers[i].ns = "obstacles";
@@ -93,7 +103,8 @@ public:
 
     // Set rate
     rate_ = get_parameter("rate").as_double();
-    if (rate_ <= 0) {
+    if (rate_ <= 0)
+    {
       rate_ = 200.0;
     }
 
@@ -102,21 +113,21 @@ public:
 
     // Create reset service of empty type
     reset_srv_ = create_service<std_srvs::srv::Empty>(
-      "~/reset",
-      std::bind(
-        &NuSimNode::reset_callback,
-        this,
-        std::placeholders::_1,
-        std::placeholders::_2));
+        "~/reset",
+        std::bind(
+            &NuSimNode::reset_callback,
+            this,
+            std::placeholders::_1,
+            std::placeholders::_2));
 
     // Create teleport service of Teleport type
     teleport_srv_ = create_service<nusim::srv::Teleport>(
-      "~/teleport",
-      std::bind(
-        &NuSimNode::teleport_callback,
-        this,
-        std::placeholders::_1,
-        std::placeholders::_2));
+        "~/teleport",
+        std::bind(
+            &NuSimNode::teleport_callback,
+            this,
+            std::placeholders::_1,
+            std::placeholders::_2));
 
     // Set initial pose
     x0_ = get_parameter("x0").as_double();
@@ -142,8 +153,8 @@ public:
     wheel_cmd_sub_ = create_subscription<nuturtlebot_msgs::msg::WheelCommands>("/wheel_cmd",
                                                                                10,
                                                                                std::bind(&NuSimNode::wheel_cmd_callback,
-                                                                               this,
-                                                                               std::placeholders::_1));
+                                                                                         this,
+                                                                                         std::placeholders::_1));
 
     // Initialize wheel velocities
     left_wheel_velocity_ = 0.0;
@@ -173,7 +184,8 @@ public:
 
     // Initialize wall marker array centered at (0,0), 0.25m tall, and 0.1m thick
     wall_marker_array_.markers.resize(4);
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 4; i++)
+    {
       wall_marker_array_.markers[i].header.frame_id = "nusim/world";
       wall_marker_array_.markers[i].header.stamp = this->now();
       wall_marker_array_.markers[i].ns = "walls";
@@ -218,6 +230,12 @@ public:
     wall_marker_array_.markers[3].scale.x = wall_x_ + 0.2;
     wall_marker_array_.markers[3].scale.y = 0.1;
     wall_marker_array_.markers[3].scale.z = 0.25;
+
+    // Create fake sensor publisher
+    fake_sensor_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("/fake_sensor", 10);
+
+    // Create a fake sensor timer that runs at 5Hz
+    fake_sensor_timer_ = create_wall_timer(1s / rate_, std::bind(&NuSimNode::fake_sensor_callback, this));
   }
 
 private:
@@ -242,8 +260,8 @@ private:
     broadcaster_->sendTransform(transformStamped_);
 
     // Publish sensor data
-    int left_encoder = static_cast<int>((left_wheel_position_ + left_wheel_velocity_/rate_)/encoder_ticks_per_rad_) % 4096; // 12-bit encoder
-    int right_encoder = static_cast<int>((right_wheel_position_ + left_wheel_velocity_/rate_)/encoder_ticks_per_rad_) % 4096;
+    int left_encoder = static_cast<int>((left_wheel_position_ + left_wheel_velocity_ / rate_) / encoder_ticks_per_rad_) % 4096; // 12-bit encoder
+    int right_encoder = static_cast<int>((right_wheel_position_ + left_wheel_velocity_ / rate_) / encoder_ticks_per_rad_) % 4096;
     nuturtlebot_msgs::msg::SensorData sensor_data;
     sensor_data.left_encoder = left_encoder;
     sensor_data.right_encoder = right_encoder;
@@ -293,10 +311,12 @@ private:
     left_wheel_velocity_ *= motor_cmd_per_rad_sec_;
     right_wheel_velocity_ *= motor_cmd_per_rad_sec_;
 
-    if (msg->left_velocity != 0){
+    if (msg->left_velocity != 0)
+    {
       left_wheel_velocity_ += vel_dist(gen_);
     }
-    if (msg->right_velocity != 0){
+    if (msg->right_velocity != 0)
+    {
       right_wheel_velocity_ += vel_dist(gen_);
     }
 
@@ -324,6 +344,69 @@ private:
     wheel_velocities.right = right_wheel_velocity_;
     diff_drive_.setWheelVelocities(wheel_velocities);
     diff_drive_.setWheelAngles(wheel_angles);
+  }
+
+  void fake_sensor_callback()
+  {
+
+    turtlelib::Vector2D robot_position;
+    robot_position.x = robot_state_.x;
+    robot_position.y = robot_state_.y;
+    turtlelib::Transform2D Twb(robot_position, robot_state_.theta);
+    turtlelib::Transform2D Tbw = Twb.inv();
+
+    fake_sensor_marker_array_.markers.resize(obstacles_x_.size());
+    for (auto i = 0; i < (int)(obstacles_x_.size()); i++)
+    {
+      fake_sensor_marker_array_.markers[i].header.frame_id = "red/base_footprint";
+      fake_sensor_marker_array_.markers[i].header.stamp = this->get_clock()->now();
+      // fake_sensor_marker_array_.markers[i].ns = "fake_sensor";
+      fake_sensor_marker_array_.markers[i].id = i;
+      fake_sensor_marker_array_.markers[i].type = visualization_msgs::msg::Marker::CYLINDER;
+      fake_sensor_marker_array_.markers[i].pose.position.z = 0.0;
+      fake_sensor_marker_array_.markers[i].pose.orientation.x = 0.0;
+      fake_sensor_marker_array_.markers[i].pose.orientation.y = 0.0;
+      fake_sensor_marker_array_.markers[i].pose.orientation.z = 0.0;
+      fake_sensor_marker_array_.markers[i].pose.orientation.w = 1.0;
+      fake_sensor_marker_array_.markers[i].scale.x = 2 * obstacles_r_;
+      fake_sensor_marker_array_.markers[i].scale.y = 2 * obstacles_r_;
+      fake_sensor_marker_array_.markers[i].scale.z = 0.25;
+      fake_sensor_marker_array_.markers[i].color.a = 1.0;
+      fake_sensor_marker_array_.markers[i].color.r = 1.0;
+      fake_sensor_marker_array_.markers[i].color.g = 1.0;
+      fake_sensor_marker_array_.markers[i].color.b = 0.0;
+
+      // we need to determine action based on distance to obstacle
+      // obstacles are in the body frame!!!
+      turtlelib::Vector2D obstacle_position;
+      obstacle_position.x = obstacles_x_[i];
+      obstacle_position.y = obstacles_y_[i];
+      turtlelib::Vector2D obstacle_position_body = Tbw(obstacle_position);
+      double distance_to_obstacle = sqrt(pow(obstacle_position_body.x, 2) +
+                                         pow(obstacle_position_body.y, 2));
+      if (distance_to_obstacle < max_range_)
+      {
+        fake_sensor_marker_array_.markers[i].action = visualization_msgs::msg::Marker::ADD;
+      }
+      else
+      {
+        fake_sensor_marker_array_.markers[i].action = visualization_msgs::msg::Marker::DELETE;
+      }
+
+      // we need to add noise to the distance to obstacle
+      std::normal_distribution<double> obstacle_dist_dist(0.0, basic_sensor_variance_);
+      double obstacle_noise_x = obstacle_dist_dist(gen_);
+      double obstacle_noise_y = obstacle_dist_dist(gen_);
+      fake_sensor_marker_array_.markers[i].pose.position.x = obstacle_position_body.x + obstacle_noise_x;
+      fake_sensor_marker_array_.markers[i].pose.position.y = obstacle_position_body.y + obstacle_noise_y;
+
+      /*
+      fake_sensor_marker_array_.markers[i].action = visualization_msgs::msg::Marker::ADD;
+      fake_sensor_marker_array_.markers[i].pose.position.x = obstacles_x_[i];
+      fake_sensor_marker_array_.markers[i].pose.position.y = obstacles_y_[i];
+      */
+    }
+    fake_sensor_pub_->publish(fake_sensor_marker_array_);
   }
 
   rclcpp::TimerBase::SharedPtr timer_;
@@ -357,11 +440,19 @@ private:
   turtlelib::RobotState robot_state_;
   double input_noise_;
   double slip_fraction_;
-  std::random_device rd{};  // obtain a random number from hardware
+  double basic_sensor_variance_;
+  double max_range_;
+  std::random_device rd{}; // obtain a random number from hardware
   std::mt19937 gen_{rd()}; // seed the generator
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr fake_sensor_pub_;
+  visualization_msgs::msg::MarkerArray fake_sensor_marker_array_;
+  std::vector<double> obstacles_x_;
+  std::vector<double> obstacles_y_;
+  double obstacles_r_;
+  rclcpp::TimerBase::SharedPtr fake_sensor_timer_;
 };
 
-int main(int argc, char * argv[])
+int main(int argc, char *argv[])
 {
   rclcpp::init(argc, argv);
   std::vector<double> obstacles_x = {-0.6, 0.7, 0.5};
