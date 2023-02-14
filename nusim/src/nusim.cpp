@@ -459,8 +459,69 @@ private:
     laser_scan_msg_.range_max = max_lidar_range_;
 
     laser_scan_msg_.ranges.resize(number_of_samples_);
+
+    std::normal_distribution<double> laser_noise_dist(0.0, basic_sensor_variance_);
+    auto current_sensor_angle = 0.0;
+
     for (auto i = 0; i < number_of_samples_; i++){
+      std::vector<double> line_distances;
       // deal with the obstacles
+      for (auto i = 0; i < int(obstacles_x_.size()); i++){
+        turtlelib::Vector2D obstacle_vector;
+        obstacle_vector.x = obstacles_x_[i] + laser_noise_dist(gen_);
+        obstacle_vector.y = obstacles_y_[i] + laser_noise_dist(gen_);
+        turtlelib::Vector2D min_range_vector;
+        min_range_vector.x = min_lidar_range_ * cos(current_sensor_angle);
+        min_range_vector.y = min_lidar_range_ * sin(current_sensor_angle);
+        turtlelib::Vector2D max_range_vector;
+        max_range_vector.x = max_lidar_range_ * cos(current_sensor_angle);
+        max_range_vector.y = max_lidar_range_ * sin(current_sensor_angle);
+
+        turtlelib::Vector2D body_vector;
+        body_vector.x = robot_state_.x;
+        body_vector.y = robot_state_.y;
+
+        turtlelib::Transform2D Twb(body_vector, robot_state_.theta);
+        turtlelib::Transform2D Two(obstacle_vector, 0.0);
+        turtlelib::Transform2D Tob = (Two.inv())*Twb;
+
+        min_range_vector = Tob(min_range_vector);
+        max_range_vector = Tob(max_range_vector);
+
+        double x1 = max_range_vector.x;
+        double y1 = max_range_vector.y;
+        double x2 = min_range_vector.x;
+        double y2 = min_range_vector.y;
+
+        double dx = x2 - x1;
+        double dy = y2 - y1;
+        double dr = sqrt(pow(dx, 2) + pow(dy, 2));
+        double D = x1*y2 - x2*y1;
+        double discriminant = pow(obstacles_r_, 2) * pow(dr, 2) - pow(D, 2);
+
+        // if intersection with this obstacle
+        if (discriminant >= 0.0){
+          double x_intercept1 = (D*dy + sign(dy)*dx*sqrt(discriminant)) / pow(dr, 2);
+          double x_intercept2 = (D*dy - sign(dy)*dx*sqrt(discriminant)) / pow(dr, 2);
+          double y_intercept1 = (-D*dx + abs(dy)*sqrt(discriminant)) / pow(dr, 2);
+          double y_intercept2 = (-D*dx - abs(dy)*sqrt(discriminant)) / pow(dr, 2);
+
+          turtlelib::Vector2D intersection1;
+          intersection1.x = x_intercept1;
+          intersection1.y = y_intercept1;
+          turtlelib::Vector2D intersection2;
+          intersection2.x = x_intercept2;
+          intersection2.y = y_intercept2;
+
+          turtlelib::Vector2D intersection1_body = Tob.inv()(intersection1);
+          turtlelib::Vector2D intersection2_body = Tob.inv()(intersection2);
+
+          double distance1 = sqrt(pow(intersection1_world.x, 2) + pow(intersection1_world.y, 2));
+          double distance2 = sqrt(pow(intersection2_world.x, 2) + pow(intersection2_world.y, 2));
+
+          line_distances.push_back(std::min(distance1, distance2));
+        }
+      }
       // deal with the walls
     }
 
