@@ -5,12 +5,14 @@
 #include "tf2_ros/transform_broadcaster.h"
 #include "tf2/LinearMath/Quaternion.h"
 #include "geometry_msgs/msg/transform_stamped.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
 #include "nusim/srv/teleport.hpp"
 #include <nuturtlebot_msgs/msg/wheel_commands.hpp>
 #include <nuturtlebot_msgs/msg/sensor_data.hpp>
 #include "turtlelib/rigid2d.hpp"
 #include "turtlelib/diff_drive.hpp"
 #include "sensor_msgs/msg/laser_scan.hpp"
+#include "nav_msgs/msg/path.hpp"
 #include <chrono>
 #include <functional>
 #include <memory>
@@ -261,6 +263,13 @@ public:
 
     // Create a laser scan timer that runs at 5Hz
     laser_scan_timer_ = create_wall_timer(1s / rate_, std::bind(&NuSimNode::laser_scan_callback, this));
+
+    // Create a path publisher on /red/path topic
+    path_pub_ = create_publisher<nav_msgs::msg::Path>("/red/path", 10);
+
+    // Initialize path message
+    path_msg_.header.frame_id = "nusim/world";
+    pose_stamped_msg_.header.frame_id = "nusim/world";
   }
 
 private:
@@ -296,6 +305,13 @@ private:
     obstacles_pub_->publish(marker_array_);
     // Publish wall marker array
     wall_marker_array_pub_->publish(wall_marker_array_);
+    // Publish path message
+    path_msg_.header.stamp = this->get_clock()->now();
+    pose_stamped_msg_.header.stamp = this->get_clock()->now();
+    pose_stamped_msg_.pose.position.x = robot_state_.x;
+    pose_stamped_msg_.pose.position.y = robot_state_.y;
+    path_msg_.poses.push_back(pose_stamped_msg_);
+    path_pub_->publish(path_msg_);
     // Increment timestep
     timestep_++;
   }
@@ -400,7 +416,7 @@ private:
       // fake_sensor_marker_array_.markers[i].ns = "fake_sensor";
       fake_sensor_marker_array_.markers[i].id = i;
       fake_sensor_marker_array_.markers[i].type = visualization_msgs::msg::Marker::CYLINDER;
-      fake_sensor_marker_array_.markers[i].pose.position.z = 0.0;
+      fake_sensor_marker_array_.markers[i].pose.position.z = 0.125;
       fake_sensor_marker_array_.markers[i].pose.orientation.x = 0.0;
       fake_sensor_marker_array_.markers[i].pose.orientation.y = 0.0;
       fake_sensor_marker_array_.markers[i].pose.orientation.z = 0.0;
@@ -537,10 +553,10 @@ private:
       double y1 = robot_state_.y;
       double x2 = x1 + max_lidar_range_ * cos(current_sensor_angle + robot_state_.theta);
       double y2 = y1 + max_lidar_range_ * sin(current_sensor_angle + robot_state_.theta);
-      std::vector<std::pair<double, double>> corners_list = {std::make_pair(-wall_x_/2.0, -wall_y_/2.0),
-                                                             std::make_pair(-wall_x_/2.0, wall_y_/2.0),
-                                                             std::make_pair(wall_x_/2.0, wall_y_/2.0),
-                                                             std::make_pair(wall_x_/2.0, -wall_y_/2.0)};
+      std::vector<std::pair<double, double>> corners_list = {std::make_pair(-wall_x_/2.0+0.1, -wall_y_/2.0+0.2),
+                                                             std::make_pair(-wall_x_/2.0+0.1, wall_y_/2.0-0.1),
+                                                             std::make_pair(wall_x_/2.0-0.1, wall_y_/2.0-0.1),
+                                                             std::make_pair(wall_x_/2.0-0.1, -wall_y_/2.0+0.2)};
       // loop through lines formed by pairs of corners
       for (auto i = 0; i < 4; i++){
         auto corner1 = corners_list[i];
@@ -635,6 +651,9 @@ private:
   rclcpp::Publisher<sensor_msgs::msg::LaserScan>::SharedPtr laser_scan_pub_;
   rclcpp::TimerBase::SharedPtr laser_scan_timer_;
   sensor_msgs::msg::LaserScan laser_scan_msg_;
+  rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub_;
+  nav_msgs::msg::Path path_msg_;
+  geometry_msgs::msg::PoseStamped pose_stamped_msg_;
 };
 
 int main(int argc, char *argv[])
