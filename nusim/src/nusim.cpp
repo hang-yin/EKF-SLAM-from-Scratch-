@@ -553,10 +553,10 @@ private:
       double y1 = robot_state_.y;
       double x2 = x1 + max_lidar_range_ * cos(current_sensor_angle + robot_state_.theta);
       double y2 = y1 + max_lidar_range_ * sin(current_sensor_angle + robot_state_.theta);
-      std::vector<std::pair<double, double>> corners_list = {std::make_pair(-wall_x_/2.0+0.1, -wall_y_/2.0+0.2),
-                                                             std::make_pair(-wall_x_/2.0+0.1, wall_y_/2.0-0.1),
+      std::vector<std::pair<double, double>> corners_list = {std::make_pair(-wall_x_/2.0+0.15, -wall_y_/2.0+0.1),
+                                                             std::make_pair(-wall_x_/2.0+0.15, wall_y_/2.0-0.1),
                                                              std::make_pair(wall_x_/2.0-0.1, wall_y_/2.0-0.1),
-                                                             std::make_pair(wall_x_/2.0-0.1, -wall_y_/2.0+0.2)};
+                                                             std::make_pair(wall_x_/2.0-0.1, -wall_y_/2.0+0.1)};
       // loop through lines formed by pairs of corners
       for (auto i = 0; i < 4; i++){
         auto corner1 = corners_list[i];
@@ -576,7 +576,7 @@ private:
             intersection.x = x_intercept;
             intersection.y = y_intercept;
             turtlelib::Vector2D intersection_body = Twb.inv()(intersection);
-            double distance = sqrt(pow(intersection_body.x, 2) + pow(intersection_body.y, 2));
+            double distance = sqrt(pow(intersection_body.x, 2) + pow(intersection_body.y, 2)) + laser_noise_dist(gen_);
             line_distances.push_back(distance);
           }
         }
