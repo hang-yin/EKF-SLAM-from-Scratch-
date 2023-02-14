@@ -43,12 +43,12 @@ public:
     declare_parameter("collision_radius", 0.11);
     declare_parameter("min_lidar_range", 0.16);
     declare_parameter("max_lidar_range", 8.0);
-    declare_parameter("angle_increment", 0.0174532924)
-    declare_parameter("number_of_samples", 360)
-    declare_parameter("resolution", 0.01)
-    declare_parameter("noise_level", 0.01)
-    declare_parameter("angle_min", 0.0)
-    declare_parameter("angle_max", 6.283185307)
+    declare_parameter("angle_increment", 0.0174532924);
+    declare_parameter("number_of_samples", 360);
+    declare_parameter("resolution", 0.01);
+    declare_parameter("noise_level", 0.01);
+    declare_parameter("angle_min", 0.0);
+    declare_parameter("angle_max", 6.283185307);
 
     // Get input_noise, slip_fraction, basic sensor variance, and max range
     input_noise_ = get_parameter("input_noise").as_double();
@@ -59,7 +59,7 @@ public:
     min_lidar_range_ = get_parameter("min_lidar_range").as_double();
     max_lidar_range_ = get_parameter("max_lidar_range").as_double();
     angle_increment_ = get_parameter("angle_increment").as_double();
-    number_of_samples_ = get_parameter("number_of_samples").as_double();
+    number_of_samples_ = get_parameter("number_of_samples").as_int();
     resolution_ = get_parameter("resolution").as_double();
     noise_level_ = get_parameter("noise_level").as_double();
     angle_min_ = get_parameter("angle_min").as_double();
@@ -100,7 +100,7 @@ public:
       marker_array_.markers[i].action = visualization_msgs::msg::Marker::ADD;
       marker_array_.markers[i].pose.position.x = obstacles_x.at(i);
       marker_array_.markers[i].pose.position.y = obstacles_y.at(i);
-      marker_array_.markers[i].pose.position.z = 0;
+      marker_array_.markers[i].pose.position.z = 0.125;
       marker_array_.markers[i].pose.orientation.x = 0.0;
       marker_array_.markers[i].pose.orientation.y = 0.0;
       marker_array_.markers[i].pose.orientation.z = 0.0;
@@ -260,7 +260,7 @@ public:
     laser_scan_pub_ = create_publisher<sensor_msgs::msg::LaserScan>("/scan", 10);
 
     // Create a laser scan timer that runs at 5Hz
-    laser_scan_timer_ = create_wall_timer(1s / 5.0, std::bind(&NuSimNode::laser_scan_callback, this));
+    laser_scan_timer_ = create_wall_timer(1s / rate_, std::bind(&NuSimNode::laser_scan_callback, this));
   }
 
 private:
@@ -386,7 +386,6 @@ private:
 
   void fake_sensor_callback()
   {
-
     turtlelib::Vector2D robot_position;
     robot_position.x = robot_state_.x;
     robot_position.y = robot_state_.y;
@@ -448,7 +447,7 @@ private:
   }
 
   void laser_scan_callback(){
-    laser_scan_msg_.header.stemp = this->get_clock()->now();
+    laser_scan_msg_.header.stamp = this->get_clock()->now();
     laser_scan_msg_.header.frame_id = "red/base_scan";
     laser_scan_msg_.angle_min = angle_min_;
     laser_scan_msg_.angle_max = angle_max_;
@@ -462,6 +461,11 @@ private:
 
     std::normal_distribution<double> laser_noise_dist(0.0, basic_sensor_variance_);
     auto current_sensor_angle = 0.0;
+
+    turtlelib::Vector2D body_vector;
+    body_vector.x = robot_state_.x;
+    body_vector.y = robot_state_.y;
+    turtlelib::Transform2D Twb(body_vector, robot_state_.theta);
 
     for (auto i = 0; i < number_of_samples_; i++){
       std::vector<double> line_distances;
@@ -477,11 +481,6 @@ private:
         max_range_vector.x = max_lidar_range_ * cos(current_sensor_angle);
         max_range_vector.y = max_lidar_range_ * sin(current_sensor_angle);
 
-        turtlelib::Vector2D body_vector;
-        body_vector.x = robot_state_.x;
-        body_vector.y = robot_state_.y;
-
-        turtlelib::Transform2D Twb(body_vector, robot_state_.theta);
         turtlelib::Transform2D Two(obstacle_vector, 0.0);
         turtlelib::Transform2D Tob = (Two.inv())*Twb;
 
@@ -500,11 +499,21 @@ private:
         double discriminant = pow(obstacles_r_, 2) * pow(dr, 2) - pow(D, 2);
 
         // if intersection with this obstacle
+        double x_intercept1 = 0.0;
+        double x_intercept2 = 0.0;
+        double y_intercept1 = 0.0;
+        double y_intercept2 = 0.0;
         if (discriminant >= 0.0){
-          double x_intercept1 = (D*dy + sign(dy)*dx*sqrt(discriminant)) / pow(dr, 2);
-          double x_intercept2 = (D*dy - sign(dy)*dx*sqrt(discriminant)) / pow(dr, 2);
-          double y_intercept1 = (-D*dx + abs(dy)*sqrt(discriminant)) / pow(dr, 2);
-          double y_intercept2 = (-D*dx - abs(dy)*sqrt(discriminant)) / pow(dr, 2);
+          if (dy > 0.0){
+            x_intercept1 = (D*dy + dx*sqrt(discriminant)) / pow(dr, 2);
+            x_intercept2 = (D*dy - dx*sqrt(discriminant)) / pow(dr, 2);
+          }else{
+            x_intercept1 = (D*dy - dx*sqrt(discriminant)) / pow(dr, 2);
+            x_intercept2 = (D*dy + dx*sqrt(discriminant)) / pow(dr, 2);
+          }
+          
+          y_intercept1 = (-D*dx + abs(dy)*sqrt(discriminant)) / pow(dr, 2);
+          y_intercept2 = (-D*dx - abs(dy)*sqrt(discriminant)) / pow(dr, 2);
 
           turtlelib::Vector2D intersection1;
           intersection1.x = x_intercept1;
@@ -516,15 +525,61 @@ private:
           turtlelib::Vector2D intersection1_body = Tob.inv()(intersection1);
           turtlelib::Vector2D intersection2_body = Tob.inv()(intersection2);
 
-          double distance1 = sqrt(pow(intersection1_world.x, 2) + pow(intersection1_world.y, 2));
-          double distance2 = sqrt(pow(intersection2_world.x, 2) + pow(intersection2_world.y, 2));
+          double distance1 = sqrt(pow(intersection1_body.x, 2) + pow(intersection1_body.y, 2));
+          double distance2 = sqrt(pow(intersection2_body.x, 2) + pow(intersection2_body.y, 2));
 
           line_distances.push_back(std::min(distance1, distance2));
         }
       }
       // deal with the walls
+      // use line-line intersection formula from mathworld?
+      double x1 = robot_state_.x;
+      double y1 = robot_state_.y;
+      double x2 = x1 + max_lidar_range_ * cos(current_sensor_angle + robot_state_.theta);
+      double y2 = y1 + max_lidar_range_ * sin(current_sensor_angle + robot_state_.theta);
+      std::vector<std::pair<double, double>> corners_list = {std::make_pair(-wall_x_/2.0, -wall_y_/2.0),
+                                                             std::make_pair(-wall_x_/2.0, wall_y_/2.0),
+                                                             std::make_pair(wall_x_/2.0, wall_y_/2.0),
+                                                             std::make_pair(wall_x_/2.0, -wall_y_/2.0)};
+      // loop through lines formed by pairs of corners
+      for (auto i = 0; i < 4; i++){
+        auto corner1 = corners_list[i];
+        auto corner2 = corners_list[(i+1)%4];
+        double x3 = corner1.first;
+        double y3 = corner1.second;
+        double x4 = corner2.first;
+        double y4 = corner2.second;
+        double denominator = (x1-x2)*(y3-y4) - (y1-y2)*(x3-x4);
+        if (denominator != 0.0){
+          double x_intercept = ((x1*y2 - y1*x2)*(x3-x4) - (x1-x2)*(x3*y4 - y3*x4)) / denominator;
+          double y_intercept = ((x1*y2 - y1*x2)*(y3-y4) - (y1-y2)*(x3*y4 - y3*x4)) / denominator;
+          // check if intersection is within the line segment
+          if (x_intercept >= std::min(x1, x2) && x_intercept <= std::max(x1, x2) &&
+              x_intercept >= std::min(x3, x4) && x_intercept <= std::max(x3, x4)){
+            turtlelib::Vector2D intersection;
+            intersection.x = x_intercept;
+            intersection.y = y_intercept;
+            turtlelib::Vector2D intersection_body = Twb.inv()(intersection);
+            double distance = sqrt(pow(intersection_body.x, 2) + pow(intersection_body.y, 2));
+            line_distances.push_back(distance);
+          }
+        }
+      }
+      // find the closest intersection
+      if (line_distances.size() > 0){
+        laser_scan_msg_.ranges[i] = *std::min_element(line_distances.begin(), line_distances.end());
+      }
+      else{
+        laser_scan_msg_.ranges[i] = max_lidar_range_;
+      }
+      current_sensor_angle += angle_increment_;
+      // check sensor angle against angle_max_
+      if (current_sensor_angle > angle_max_){
+        current_sensor_angle = 0.0;
+      }
     }
-
+    // publish the laser scan message
+    laser_scan_pub_->publish(laser_scan_msg_);
   }
 
   rclcpp::TimerBase::SharedPtr timer_;
@@ -564,7 +619,7 @@ private:
   double min_lidar_range_;
   double max_lidar_range_;
   double angle_increment_;
-  double number_of_samples_;
+  int number_of_samples_;
   double resolution_;
   double noise_level_;
   double angle_min_;
