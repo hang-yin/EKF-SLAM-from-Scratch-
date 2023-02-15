@@ -255,9 +255,9 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /nusim_node/wall_markers
       Value: true
-    - Class: rviz_default_plugins/Odometry
+    - Class: rviz_default_plugins/MarkerArray
       Enabled: true
-      Name: Odom
+      Name: Obstacle Estimation
       Namespaces:
         obstacles: true
       Topic:
@@ -265,7 +265,43 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /odom
+        Value: /fake_sensor
+      Value: true
+    - Class: rviz_default_plugins/Path
+      Enabled: true
+      Name: Simulated Path
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Filter size: 10
+        Value: /red/path
+      Line Style:
+        Value: Lines
+      Color:
+        Value: 255; 0; 0
+      Alpha:
+        Value: 1
+      Buffer Length: 1
+      Value: true
+    - Class: rviz_default_plugins/Path
+      Enabled: true
+      Name: Odometry Path
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Filter size: 10
+        Value: /blue/path
+      Line Style:
+        Value: Lines
+      Color:
+        Value: 0; 0; 255
+      Alpha:
+        Value: 1
+      Buffer Length: 1
       Value: true
   Enabled: true
   Global Options:

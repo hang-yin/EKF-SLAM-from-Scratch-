@@ -211,6 +211,24 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /nusim_node/wall_markers
       Value: true
+    - Class: rviz_default_plugins/Path
+      Enabled: true
+      Name: Red Path
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Filter size: 10
+        Value: /red/path
+      Line Style:
+        Value: Lines
+      Color:
+        Value: 255; 0; 0
+      Alpha:
+        Value: 1
+      Buffer Length: 1
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48

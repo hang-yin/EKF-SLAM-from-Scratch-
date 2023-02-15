@@ -5,9 +5,11 @@
 #include "tf2_ros/transform_broadcaster.h"
 #include "tf2/LinearMath/Quaternion.h"
 #include "geometry_msgs/msg/transform_stamped.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "nuturtle_control/srv/initial_pose.hpp"
+#include "nav_msgs/msg/path.hpp"
 
 using namespace std::chrono_literals;
 
@@ -65,6 +67,12 @@ public:
         // Create a timer to publish odometry
         rate_ = 200.0;
         timer_ = create_wall_timer(1s / rate_, std::bind(&OdometryNode::timer_callback, this));
+
+        // Create a path publisher on /red/path topic
+        path_pub_ = create_publisher<nav_msgs::msg::Path>("/blue/path", 10);
+        // Initialize path message
+        path_msg_.header.frame_id = "nusim/world";
+        pose_stamped_msg_.header.frame_id = "nusim/world";
 
         // Initialize odometry
         odom_.header.frame_id = odom_id_;
@@ -126,6 +134,9 @@ private:
     double right_wheel_vel_;
     geometry_msgs::msg::TransformStamped odom_tf_;
     double rate_;
+    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub_;
+    nav_msgs::msg::Path path_msg_;
+    geometry_msgs::msg::PoseStamped pose_stamped_msg_;
 
     // Callback function for joint state
     void joint_callback(const sensor_msgs::msg::JointState::SharedPtr msg)
@@ -202,6 +213,14 @@ private:
         odom_tf_.transform.rotation.z = q.z();
         odom_tf_.transform.rotation.w = q.w();
         tf_broadcaster_->sendTransform(odom_tf_);
+
+        // Publish path
+        path_msg_.header.stamp = this->get_clock()->now();
+        pose_stamped_msg_.header.stamp = this->get_clock()->now();
+        pose_stamped_msg_.pose.position.x = x_;
+        pose_stamped_msg_.pose.position.y = y_;
+        path_msg_.poses.push_back(pose_stamped_msg_);
+        path_pub_->publish(path_msg_);
     }
 };
 
