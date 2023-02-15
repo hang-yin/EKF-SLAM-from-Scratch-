@@ -35,7 +35,7 @@ public:
     declare_parameter("theta0", 0.0);
     declare_parameter("obstacles_x", std::vector<double>());
     declare_parameter("obstacles_y", std::vector<double>());
-    declare_parameter("obstacles_r", 0.0);
+    declare_parameter("obstacles_r", 0.038);
     declare_parameter("encoder_ticks_per_rad", 0.00153398078);
     declare_parameter("motor_cmd_per_rad_sec", 0.024);
     declare_parameter("input_noise", 0.0);
@@ -51,6 +51,7 @@ public:
     declare_parameter("noise_level", 0.01);
     declare_parameter("angle_min", 0.0);
     declare_parameter("angle_max", 6.283185307);
+    declare_parameter("draw_only", false);
 
     // Get input_noise, slip_fraction, basic sensor variance, and max range
     input_noise_ = get_parameter("input_noise").as_double();
@@ -66,6 +67,7 @@ public:
     noise_level_ = get_parameter("noise_level").as_double();
     angle_min_ = get_parameter("angle_min").as_double();
     angle_max_ = get_parameter("angle_max").as_double();
+    draw_only_ = get_parameter("draw_only").as_bool();
 
     // Check obstacles input, if length of vectors are not equal, exit node
     const auto obstacles_x = get_parameter("obstacles_x").as_double_array();
@@ -90,9 +92,17 @@ public:
     // Initialize marker array
     obstacles_x_ = obstacles_x;
     obstacles_y_ = obstacles_y;
+    // If obstacle list is empty, use default obstacles
+    if (obstacles_x_.size() == 0)
+    {
+      std::vector<double> default_obstacles_x = {-0.6, 0.7, 0.5};
+      std::vector<double> default_obstacles_y = {-0.8, -0.7, 0.9};
+      obstacles_x_ = default_obstacles_x;
+      obstacles_y_ = default_obstacles_y;
+    }
     obstacles_r_ = obstacles_r;
-    marker_array_.markers.resize(obstacles_x.size());
-    for (size_t i = 0; i < obstacles_x.size(); i++)
+    marker_array_.markers.resize(obstacles_x_.size());
+    for (size_t i = 0; i < obstacles_x_.size(); i++)
     {
       marker_array_.markers[i].header.frame_id = "nusim/world";
       marker_array_.markers[i].header.stamp = get_clock()->now();
@@ -100,8 +110,8 @@ public:
       marker_array_.markers[i].id = i;
       marker_array_.markers[i].type = visualization_msgs::msg::Marker::CYLINDER;
       marker_array_.markers[i].action = visualization_msgs::msg::Marker::ADD;
-      marker_array_.markers[i].pose.position.x = obstacles_x.at(i);
-      marker_array_.markers[i].pose.position.y = obstacles_y.at(i);
+      marker_array_.markers[i].pose.position.x = obstacles_x_.at(i);
+      marker_array_.markers[i].pose.position.y = obstacles_y_.at(i);
       marker_array_.markers[i].pose.position.z = 0.125;
       marker_array_.markers[i].pose.orientation.x = 0.0;
       marker_array_.markers[i].pose.orientation.y = 0.0;
@@ -111,8 +121,8 @@ public:
       marker_array_.markers[i].color.r = 1.0;
       marker_array_.markers[i].color.g = 0.0;
       marker_array_.markers[i].color.b = 0.0;
-      marker_array_.markers[i].scale.x = 2 * obstacles_r;
-      marker_array_.markers[i].scale.y = 2 * obstacles_r;
+      marker_array_.markers[i].scale.x = 2 * obstacles_r_;
+      marker_array_.markers[i].scale.y = 2 * obstacles_r_;
       marker_array_.markers[i].scale.z = 0.25;
     }
 
@@ -280,38 +290,41 @@ private:
     msg.data = timestep_;
     timestep_pub_->publish(msg);
 
-    // Broadcast transform
-    transformStamped_.header.stamp = this->get_clock()->now();
-    // robot_state_ = diff_drive_.getRobotState();
-    transformStamped_.transform.translation.x = robot_state_.x;
-    transformStamped_.transform.translation.y = robot_state_.y;
-    tf2::Quaternion q;
-    q.setRPY(0.0, 0.0, robot_state_.theta);
-    transformStamped_.transform.rotation.x = q.x();
-    transformStamped_.transform.rotation.y = q.y();
-    transformStamped_.transform.rotation.z = q.z();
-    transformStamped_.transform.rotation.w = q.w();
-    broadcaster_->sendTransform(transformStamped_);
+    if (!draw_only_){
+      // Broadcast transform
+      transformStamped_.header.stamp = this->get_clock()->now();
+      // robot_state_ = diff_drive_.getRobotState();
+      transformStamped_.transform.translation.x = robot_state_.x;
+      transformStamped_.transform.translation.y = robot_state_.y;
+      tf2::Quaternion q;
+      q.setRPY(0.0, 0.0, robot_state_.theta);
+      transformStamped_.transform.rotation.x = q.x();
+      transformStamped_.transform.rotation.y = q.y();
+      transformStamped_.transform.rotation.z = q.z();
+      transformStamped_.transform.rotation.w = q.w();
+      broadcaster_->sendTransform(transformStamped_);
 
-    // Publish sensor data
-    int left_encoder = static_cast<int>((left_wheel_position_ + left_wheel_velocity_ / rate_) / encoder_ticks_per_rad_) % 4096; // 12-bit encoder
-    int right_encoder = static_cast<int>((right_wheel_position_ + left_wheel_velocity_ / rate_) / encoder_ticks_per_rad_) % 4096;
-    nuturtlebot_msgs::msg::SensorData sensor_data;
-    sensor_data.left_encoder = left_encoder;
-    sensor_data.right_encoder = right_encoder;
-    sensor_data_pub_->publish(sensor_data);
+      // Publish sensor data
+      int left_encoder = static_cast<int>((left_wheel_position_ + left_wheel_velocity_ / rate_) / encoder_ticks_per_rad_) % 4096; // 12-bit encoder
+      int right_encoder = static_cast<int>((right_wheel_position_ + left_wheel_velocity_ / rate_) / encoder_ticks_per_rad_) % 4096;
+      nuturtlebot_msgs::msg::SensorData sensor_data;
+      sensor_data.left_encoder = left_encoder;
+      sensor_data.right_encoder = right_encoder;
+      sensor_data_pub_->publish(sensor_data);
+
+      // Publish path message
+      path_msg_.header.stamp = this->get_clock()->now();
+      pose_stamped_msg_.header.stamp = this->get_clock()->now();
+      pose_stamped_msg_.pose.position.x = robot_state_.x;
+      pose_stamped_msg_.pose.position.y = robot_state_.y;
+      path_msg_.poses.push_back(pose_stamped_msg_);
+      path_pub_->publish(path_msg_);
+    }
 
     // Publish obstacle marker array
     obstacles_pub_->publish(marker_array_);
     // Publish wall marker array
     wall_marker_array_pub_->publish(wall_marker_array_);
-    // Publish path message
-    path_msg_.header.stamp = this->get_clock()->now();
-    pose_stamped_msg_.header.stamp = this->get_clock()->now();
-    pose_stamped_msg_.pose.position.x = robot_state_.x;
-    pose_stamped_msg_.pose.position.y = robot_state_.y;
-    path_msg_.poses.push_back(pose_stamped_msg_);
-    path_pub_->publish(path_msg_);
     // Increment timestep
     timestep_++;
   }
@@ -346,6 +359,10 @@ private:
 
   void wheel_cmd_callback(const nuturtlebot_msgs::msg::WheelCommands::SharedPtr msg)
   {
+    if (draw_only_)
+    {
+      return;
+    }
     std::normal_distribution<double> vel_dist(0.0, input_noise_);
     left_wheel_velocity_ = static_cast<double>(msg->left_velocity);
     right_wheel_velocity_ = static_cast<double>(msg->right_velocity);
@@ -402,6 +419,10 @@ private:
 
   void fake_sensor_callback()
   {
+    if (draw_only_)
+    {
+      return;
+    }
     turtlelib::Vector2D robot_position;
     robot_position.x = robot_state_.x;
     robot_position.y = robot_state_.y;
@@ -463,6 +484,10 @@ private:
   }
 
   void laser_scan_callback(){
+    if (draw_only_)
+    {
+      return;
+    }
     laser_scan_msg_.header.stamp = this->get_clock()->now();
     laser_scan_msg_.header.frame_id = "red/base_scan";
     laser_scan_msg_.angle_min = angle_min_;
@@ -662,6 +687,7 @@ private:
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub_;
   nav_msgs::msg::Path path_msg_;
   geometry_msgs::msg::PoseStamped pose_stamped_msg_;
+  bool draw_only_;
 };
 
 int main(int argc, char *argv[])

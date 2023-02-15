@@ -37,11 +37,31 @@
         <node name="hlds_laser_pub" pkg="hls_lfcd_lds_driver" exec="hlds_laser_publisher">
             <param name="port" value="/dev/ttyUSB0"/>
         </node>
+        <node pkg="nusim" exec="nusim_node" name="nuwall">
+            <param from="$(find-pkg-share nusim)/config/basic_world.yaml"/>
+            <param name="draw_only" value="true"/>
+        </node>
+    </group>
+    <group if="$(eval '\'$(var robot)\' == \'none\'')">
+        <node pkg="nusim" exec="nusim_node" name="nuwall">
+            <param from="$(find-pkg-share nusim)/config/basic_world.yaml"/>
+            <param name="draw_only" value="true"/>
+        </node>
     </group>
 
     <!-- argument use_rviz-->
-    <group if="$(eval '\'$(var use_rviz)\' == \'true\' and \'$(var robot)\' != \'localhost\'')">
+    <group if="$(eval '\'$(var use_rviz)\' == \'true\' and \'$(var robot)\' != \'localhost\' and \'$(var robot)\' != \'none\'')">
         <node pkg="rviz2" exec="rviz2" name="rviz2" args="-d $(find-pkg-share nuturtle_control)/config/nuturtle_control.rviz"/>
+        <include file="$(find-pkg-share nuturtle_description)/launch/load_one.launch.py">
+            <arg name="color" value="blue"/>
+            <arg name="use_rviz" value="false"/>
+            <arg name="use_jsp" value="true"/>
+        </include>
+    </group>
+
+    <!-- when robot is none or localhost, show actual obstacles, odom robot, and real LaserScan-->
+    <group if="$(eval '\'$(var use_rviz)\' == \'true\' and \'$(var robot)\' != \'nusim\'')">
+        <node pkg="rviz2" exec="rviz2" name="rviz2" args="-d $(find-pkg-share nuturtle_control)/config/nuturtle_control_wall.rviz"/>
         <include file="$(find-pkg-share nuturtle_description)/launch/load_one.launch.py">
             <arg name="color" value="blue"/>
             <arg name="use_rviz" value="false"/>
