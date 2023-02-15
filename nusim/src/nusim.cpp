@@ -497,16 +497,16 @@ private:
         max_range_vector.x = max_lidar_range_ * cos(current_sensor_angle);
         max_range_vector.y = max_lidar_range_ * sin(current_sensor_angle);
 
-        turtlelib::Transform2D Two(obstacle_vector, 0.0);
+        turtlelib::Transform2D Two(obstacle_vector);
         turtlelib::Transform2D Tob = (Two.inv())*Twb;
 
         min_range_vector = Tob(min_range_vector);
         max_range_vector = Tob(max_range_vector);
 
-        double x1 = max_range_vector.x;
-        double y1 = max_range_vector.y;
-        double x2 = min_range_vector.x;
-        double y2 = min_range_vector.y;
+        double x1 = min_range_vector.x;
+        double y1 = min_range_vector.y;
+        double x2 = max_range_vector.x;
+        double y2 = max_range_vector.y;
 
         double dx = x2 - x1;
         double dy = y2 - y1;
@@ -543,8 +543,16 @@ private:
 
           double distance1 = sqrt(pow(intersection1_body.x, 2) + pow(intersection1_body.y, 2));
           double distance2 = sqrt(pow(intersection2_body.x, 2) + pow(intersection2_body.y, 2));
-
-          line_distances.push_back(std::min(distance1, distance2));
+          double reflected_distance1 = sqrt(pow(intersection1_body.x - min_lidar_range_ * cos(current_sensor_angle), 2) +
+                                            pow(intersection1_body.y - min_lidar_range_ * sin(current_sensor_angle), 2));
+          double reflected_distance2 = sqrt(pow(intersection2_body.x - min_lidar_range_ * cos(current_sensor_angle), 2) +
+                                            pow(intersection2_body.y - min_lidar_range_ * sin(current_sensor_angle), 2));
+          if (distance1 > reflected_distance1){
+            line_distances.push_back(distance1);
+          }
+          if (distance2 > reflected_distance2){
+            line_distances.push_back(distance2);
+          }
         }
       }
       // deal with the walls
