@@ -43,14 +43,14 @@ public:
     declare_parameter("basic_sensor_variance", 0.01);
     declare_parameter("max_range", 10.0);
     declare_parameter("collision_radius", 0.11);
-    declare_parameter("min_lidar_range", 0.16);
-    declare_parameter("max_lidar_range", 8.0);
+    declare_parameter("min_lidar_range", 0.12);
+    declare_parameter("max_lidar_range", 3.5);
     declare_parameter("angle_increment", 0.0174532924);
     declare_parameter("number_of_samples", 360);
     declare_parameter("resolution", 0.01);
     declare_parameter("noise_level", 0.01);
     declare_parameter("angle_min", 0.0);
-    declare_parameter("angle_max", 6.283185307);
+    declare_parameter("angle_max", 6.265732);
     declare_parameter("draw_only", false);
 
     // Get input_noise, slip_fraction, basic sensor variance, and max range
@@ -493,8 +493,8 @@ private:
     laser_scan_msg_.angle_min = angle_min_;
     laser_scan_msg_.angle_max = angle_max_;
     laser_scan_msg_.angle_increment = angle_increment_;
-    laser_scan_msg_.time_increment = 2.98699997074e-05;
-    laser_scan_msg_.scan_time = 0.1;
+    laser_scan_msg_.time_increment = 0.0005574136;
+    laser_scan_msg_.scan_time = 0.2006689;
     laser_scan_msg_.range_min = min_lidar_range_;
     laser_scan_msg_.range_max = max_lidar_range_;
 

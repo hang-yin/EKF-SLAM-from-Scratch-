@@ -13,11 +13,11 @@
 
 using namespace std::chrono_literals;
 
-class OdometryNode : public rclcpp::Node
+class SLAMnode : public rclcpp::Node
 {
 public: 
-    OdometryNode()
-    : Node("odometry")
+    SLAMnode()
+    : Node("slam")
     {
         // Declare parameters
         declare_parameter("body_id", "blue/base_footprint");
@@ -69,7 +69,7 @@ public:
         timer_ = create_wall_timer(1s / rate_, std::bind(&OdometryNode::timer_callback, this));
 
         // Create a path publisher on /red/path topic
-        path_pub_ = create_publisher<nav_msgs::msg::Path>("/blue/path", 10);
+        odom_path_pub_ = create_publisher<nav_msgs::msg::Path>("/blue/path", 10);
         // Initialize path message
         path_msg_.header.frame_id = "nusim/world";
         pose_stamped_msg_.header.frame_id = "nusim/world";
@@ -92,15 +92,15 @@ public:
         odom_.twist.twist.angular.z = 0.0;
 
         // Initialize transform
-        odom_tf_.header.frame_id = odom_id_;
-        odom_tf_.child_frame_id = body_id_;
-        odom_tf_.transform.translation.x = 0.0;
-        odom_tf_.transform.translation.y = 0.0;
-        odom_tf_.transform.translation.z = 0.0;
-        odom_tf_.transform.rotation.x = 0.0;
-        odom_tf_.transform.rotation.y = 0.0;
-        odom_tf_.transform.rotation.z = 0.0;
-        odom_tf_.transform.rotation.w = 1.0;
+        odom_blue_tf_.header.frame_id = odom_id_;
+        odom_blue_tf_.child_frame_id = body_id_;
+        odom_blue_tf_.transform.translation.x = 0.0;
+        odom_blue_tf_.transform.translation.y = 0.0;
+        odom_blue_tf_.transform.translation.z = 0.0;
+        odom_blue_tf_.transform.rotation.x = 0.0;
+        odom_blue_tf_.transform.rotation.y = 0.0;
+        odom_blue_tf_.transform.rotation.z = 0.0;
+        odom_blue_tf_.transform.rotation.w = 1.0;
 
         // Initialize x, y, theta, wheel positions and velocities
         x_ = 0.0;
@@ -118,13 +118,6 @@ private:
     std::string odom_id_;
     std::string wheel_left_;
     std::string wheel_right_;
-    rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
-    rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_sub_;
-    rclcpp::TimerBase::SharedPtr timer_;
-    rclcpp::Service<nuturtle_control::srv::InitialPose>::SharedPtr reset_srv_;
-    std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
-    nav_msgs::msg::Odometry odom_;
-    turtlelib::DiffDrive diff_drive_;
     double x_;
     double y_;
     double theta_;
@@ -132,11 +125,27 @@ private:
     double right_wheel_pos_;
     double left_wheel_vel_;
     double right_wheel_vel_;
-    geometry_msgs::msg::TransformStamped odom_tf_;
     double rate_;
-    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub_;
+
+    turtlelib::DiffDrive diff_drive_;
+    nav_msgs::msg::Odometry odom_;
     nav_msgs::msg::Path path_msg_;
+    geometry_msgs::msg::TransformStamped odom_blue_tf_;
+    geometry_msgs::msg::TransformStamped odom_green_tf_;
+    geometry_msgs::msg::TransformStamped map_odom_tf_;
     geometry_msgs::msg::PoseStamped pose_stamped_msg_;
+
+    // Declare publishers, subscribers, timers, services, and broadcasters
+    rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr slam_marker_pub_;
+    rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_sub_;
+    rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr laser_scan_sub_;
+    rclcpp::Service<nuturtle_control::srv::InitialPose>::SharedPtr reset_srv_;
+    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr odom_path_pub_;
+    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr slam_path_pub_;
+    rclcpp::TimerBase::SharedPtr timer_;
+    std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
+    
 
     // Callback function for joint state
     void joint_callback(const sensor_msgs::msg::JointState::SharedPtr msg)
@@ -186,34 +195,28 @@ private:
 
     void timer_callback()
     {
-        // Update header
+        // Update and publish odometry message
         odom_.header.stamp = this->now();
-
-        // Update pose
         odom_.pose.pose.position.x = x_;
         odom_.pose.pose.position.y = y_;
-
-        // Update orientation
         tf2::Quaternion q;
         q.setRPY(0.0, 0.0, theta_);
         odom_.pose.pose.orientation.x = q.x();
         odom_.pose.pose.orientation.y = q.y();
         odom_.pose.pose.orientation.z = q.z();
         odom_.pose.pose.orientation.w = q.w();
-        
-        // Publish odometry
         odom_pub_->publish(odom_);
 
-        // Publish transform
+        // Publish transform from odom to blue/base_link
         q.setRPY(0.0, 0.0, theta_);
-        odom_tf_.header.stamp = this->now();
-        odom_tf_.transform.translation.x = x_;
-        odom_tf_.transform.translation.y = y_;
-        odom_tf_.transform.rotation.x = q.x();
-        odom_tf_.transform.rotation.y = q.y();
-        odom_tf_.transform.rotation.z = q.z();
-        odom_tf_.transform.rotation.w = q.w();
-        tf_broadcaster_->sendTransform(odom_tf_);
+        odom_blue_tf_.header.stamp = this->now();
+        odom_blue_tf_.transform.translation.x = x_;
+        odom_blue_tf_.transform.translation.y = y_;
+        odom_blue_tf_.transform.rotation.x = q.x();
+        odom_blue_tf_.transform.rotation.y = q.y();
+        odom_blue_tf_.transform.rotation.z = q.z();
+        odom_blue_tf_.transform.rotation.w = q.w();
+        tf_broadcaster_->sendTransform(odom_blue_tf_);
 
         // Publish path
         path_msg_.header.stamp = this->get_clock()->now();
@@ -221,14 +224,14 @@ private:
         pose_stamped_msg_.pose.position.x = x_;
         pose_stamped_msg_.pose.position.y = y_;
         path_msg_.poses.push_back(pose_stamped_msg_);
-        path_pub_->publish(path_msg_);
+        odom_path_pub_->publish(path_msg_);
     }
 };
 
 int main(int argc, char * argv[])
 {
     rclcpp::init(argc, argv);
-    rclcpp::spin(std::make_shared<OdometryNode>());
+    rclcpp::spin(std::make_shared<SLAMnode>());
     rclcpp::shutdown();
     return 0;
 }       
