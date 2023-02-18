@@ -28,7 +28,13 @@ namespace turtlelib{
     
     private:
         int max_landmarks;
-        std::vector<double> state_vector;
+        arma::vec state_vec;
+        arma::vec state_vec_minus;
+        arma::vec state_vec_prev;
+        arma::mat sigma_mat;
+        arma::mat sigma_mat_minus;
+        arma::mat sigma_mat_prev;
+
     };
 
 }
