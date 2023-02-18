@@ -27,6 +27,10 @@ public:
         declare_parameter("odom_id", "odom");
         declare_parameter("wheel_left", "left_default");
         declare_parameter("wheel_right", "right_default");
+        declare_parameter("obstacle_radius", 0.038);
+        declare_parameter("obstacle_height", 0.25);
+        declare_parameter("min_lidar_range", 0.12);
+        declare_parameter("max_lidar_range", 3.5);
     
         // Check whether parameters are specified
         if (!has_parameter("body_id")) {
@@ -46,6 +50,10 @@ public:
         }
         wheel_left_ = get_parameter("wheel_left").as_string();
         wheel_right_ = get_parameter("wheel_right").as_string();
+        obstacle_radius_ = get_parameter("obstacle_radius").as_double();
+        obstacle_height_ = get_parameter("obstacle_height").as_double();
+        lidar_range_min_ = get_parameter("min_lidar_range").as_double();
+        lidar_range_max_ = get_parameter("max_lidar_range").as_double();
 
         // Create subscriber for joint state
         joint_sub_ = create_subscription<sensor_msgs::msg::JointState>("red/joint_states",
@@ -77,6 +85,7 @@ public:
         // Create a timer to publish odometry
         rate_ = 200.0;
         timer_ = create_wall_timer(1s / rate_, std::bind(&OdometryNode::timer_callback, this));
+        slam_marker_timer_ = create_wall_timer(1s / rate_, std::bind(&OdometryNode::slam_marker_callback, this));
 
         // Create a path publishers
         odom_path_pub_ = create_publisher<nav_msgs::msg::Path>("/blue/path", 10);
@@ -131,6 +140,8 @@ public:
         right_wheel_pos_ = 0.0;
         left_wheel_vel_ = 0.0;
         right_wheel_vel_ = 0.0;
+
+        // 
     }
 
 private:
@@ -167,11 +178,23 @@ private:
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr odom_path_pub_;
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr slam_path_pub_;
     rclcpp::TimerBase::SharedPtr timer_;
+    rclcpp::TimerBase::SharedPtr slam_marker_timer_;
     std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
 
     // Declare EKF class object
-    turtlelib::EKF ekf_;
-    
+    turtlelib::EKF ekf_(10);
+
+    // Declare slam obstacles array, it is a vector of double pairs
+    std::vector<std::pair<double, double>> slam_obstacles_;
+
+    // Declare slam marker array
+    visualization_msgs::msg::MarkerArray slam_marker_array_msg_;
+
+    // Declare parameters
+    double obstacle_radius_;
+    double obstacle_height_;
+    double lidar_range_min_;
+    double lidar_range_max_;
 
     // Callback function for joint state
     void joint_callback(const sensor_msgs::msg::JointState::SharedPtr msg)
@@ -217,6 +240,68 @@ private:
         y_ = 0.0;
         theta_ = 0.0;
         diff_drive_ = turtlelib::DiffDrive();
+    }
+
+    // Callback function for laser scan
+    void laser_scan_callback(const sensor_msgs::msg::LaserScan::SharedPtr msg)
+    {
+        // Get laser scan data
+        std::vector<double> ranges = msg->ranges;
+
+        // Create slam obstacles vector
+        slam_obstacles_.clear();
+        for (int i = 0; i < ranges.size(); i++) {
+            if (ranges[i] < 1.0 && ranges[i] > 0.1) {
+                double x = ranges[i] * cos(msg->angle_min + i * msg->angle_increment);
+                double y = ranges[i] * sin(msg->angle_min + i * msg->angle_increment);
+                slam_obstacles_.push_back(std::make_pair(x, y));
+            }
+        }
+
+        // Update EKF
+        ekf_.update(x_, y_, theta_, slam_obstacles_);
+    }
+
+    void slam_marker_callback()
+    {
+        // Clear slam marker array
+        slam_marker_array_msg_.markers.clear();
+        // Get slam obstacles
+        std::vector<std::pair<double, double>> slam_obstacles = ekf_.getObstacles();
+        // Create slam marker array
+        for (int i = 0; i < slam_obstacles.size(); i++) {
+            visualization_msgs::msg::Marker slam_marker_msg;
+            slam_marker_msg.header.frame_id = "map";
+            slam_marker_msg.header.stamp = this->now();
+            slam_marker_msg.ns = "slam_obstacles";
+            slam_marker_msg.id = i;
+            slam_marker_msg.type = visualization_msgs::msg::Marker::CYLINDER;
+            double x = slam_obstacles[i].first - ekf_.getX();
+            double y = slam_obstacles[i].second - ekf_.getY();
+            double r = std::sqrt(x * x + y * y);
+            if (r >= lidar_range_min_ && r <= lidar_range_max_){
+                slam_marker_msg.action = visualization_msgs::msg::Marker::ADD;
+            }else{
+                slam_marker_msg.action = visualization_msgs::msg::Marker::DELETE;
+            }
+            slam_marker_msg.pose.position.x = slam_obstacles[i].first;
+            slam_marker_msg.pose.position.y = slam_obstacles[i].second;
+            slam_marker_msg.pose.position.z = 0.0;
+            slam_marker_msg.pose.orientation.x = 0.0;
+            slam_marker_msg.pose.orientation.y = 0.0;
+            slam_marker_msg.pose.orientation.z = 0.0;
+            slam_marker_msg.pose.orientation.w = 1.0;
+            slam_marker_msg.scale.x = 2.0*obstacle_radius_;
+            slam_marker_msg.scale.y = 2.0*obstacle_radius_;
+            slam_marker_msg.scale.z = obstacle_height_;
+            slam_marker_msg.color.a = 1.0;
+            slam_marker_msg.color.r = 0.0;
+            slam_marker_msg.color.g = 1.0;
+            slam_marker_msg.color.b = 0.0;
+            slam_marker_array_msg_.markers.push_back(slam_marker_msg);
+        }
+        // Publish slam marker array
+        slam_marker_pub_->publish(slam_marker_array_msg_);
     }
 
     void timer_callback()
