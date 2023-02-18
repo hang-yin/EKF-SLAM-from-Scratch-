@@ -61,12 +61,13 @@ public:
                                                                        std::bind(&OdometryNode::joint_callback,
                                                                        this,
                                                                        std::placeholders::_1));
-        // Create subscriber for laser scan
-        laser_scan_sub_ = create_subscription<sensor_msgs::msg::LaserScan>("/scan",
-                                                                           10,
-                                                                           std::bind(&OdometryNode::laser_scan_callback,
-                                                                                     this,
-                                                                                     std::placeholders::_1));
+        // Create subscriber for fake sensor
+        fake_sensor_sub_ = create_subscription<visualization_msgs::msg::MarkerArray>("/fake_sensor",
+                                                                                    10,
+                                                                                    std::bind(&OdometryNode::fake_sensor_callback,
+                                                                                              this,
+                                                                                              std::placeholders::_1));
+
         // Create publisher for odometry
         odom_pub_ = create_publisher<nav_msgs::msg::Odometry>("/odom", 10);
         // Create publisher for marker array
@@ -141,7 +142,7 @@ public:
         left_wheel_vel_ = 0.0;
         right_wheel_vel_ = 0.0;
 
-        // 
+        ekf_obstacles_set_ = true;
     }
 
 private:
@@ -173,7 +174,7 @@ private:
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr slam_marker_pub_;
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_sub_;
-    rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr laser_scan_sub_;
+    rclcpp::Subscription<visualization_msgs::msg::MarkerArray>::SharedPtr fake_sensor_sub_;
     rclcpp::Service<nuturtle_control::srv::InitialPose>::SharedPtr reset_srv_;
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr odom_path_pub_;
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr slam_path_pub_;
@@ -195,6 +196,9 @@ private:
     double obstacle_height_;
     double lidar_range_min_;
     double lidar_range_max_;
+
+    // Declare a bool value for setting up ekf obstacles
+    bool ekf_obstacles_set_;
 
     // Callback function for joint state
     void joint_callback(const sensor_msgs::msg::JointState::SharedPtr msg)
@@ -242,24 +246,35 @@ private:
         diff_drive_ = turtlelib::DiffDrive();
     }
 
-    // Callback function for laser scan
-    void laser_scan_callback(const sensor_msgs::msg::LaserScan::SharedPtr msg)
+    // Callback function for fake sensor
+    void fake_sensor_callback(const visualization_msgs::msg::MarkerArray::SharedPtr msg)
     {
-        // Get laser scan data
-        std::vector<double> ranges = msg->ranges;
-
-        // Create slam obstacles vector
-        slam_obstacles_.clear();
-        for (int i = 0; i < ranges.size(); i++) {
-            if (ranges[i] < 1.0 && ranges[i] > 0.1) {
-                double x = ranges[i] * cos(msg->angle_min + i * msg->angle_increment);
-                double y = ranges[i] * sin(msg->angle_min + i * msg->angle_increment);
-                slam_obstacles_.push_back(std::make_pair(x, y));
-            }
+        // Check if fake sensor message is valid
+        if (msg->markers.size() == 0) {
+            return;
         }
-
-        // Update EKF
-        ekf_.update(x_, y_, theta_, slam_obstacles_);
+        // Extract x and y values from marker array
+        std::vector<std::pair<double, double>> fake_sensor_obstacles;
+        for (int i = 0; i < msg->markers.size(); i++) {
+            double x = msg->markers[i].pose.position.x;
+            double y = msg->markers[i].pose.position.y;
+            fake_sensor_obstacles.push_back(std::make_pair(x, y));
+        }
+        // Set ekf obstacles
+        if (ekf_obstacles_set_) {
+            ekf_.set_obstacles(fake_sensor_obstacles);
+            ekf_obstacles_set_ = false;
+        }
+        // Update ekf
+        turtlelib::WheelAngles wheel_angles;
+        wheel_angles.left = left_wheel_pos_;
+        wheel_angles.right = right_wheel_pos_;
+        turtlelib::Twist2D twist = diff_drive_.forwardKinematicsWithTwist(wheel_angles);
+        for (int i = 0; i < fake_sensor_obstacles.size(); i++) {
+            ekf_.predict(twist);
+            ekf_.correct(i, fake_sensor_obstacles[i].first, fake_sensor_obstacles[i].second);
+        }
+        slam_obstacles_ = ekf_.get_obstacles();
     }
 
     void slam_marker_callback()
