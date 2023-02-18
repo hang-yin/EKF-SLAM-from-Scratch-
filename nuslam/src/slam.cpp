@@ -282,7 +282,7 @@ private:
         // Clear slam marker array
         slam_marker_array_msg_.markers.clear();
         // Get slam obstacles
-        std::vector<std::pair<double, double>> slam_obstacles = ekf_.getObstacles();
+        std::vector<std::pair<double, double>> slam_obstacles = ekf_.get_obstacles();
         // Create slam marker array
         for (int i = 0; i < slam_obstacles.size(); i++) {
             visualization_msgs::msg::Marker slam_marker_msg;
@@ -291,8 +291,8 @@ private:
             slam_marker_msg.ns = "slam_obstacles";
             slam_marker_msg.id = i;
             slam_marker_msg.type = visualization_msgs::msg::Marker::CYLINDER;
-            double x = slam_obstacles[i].first - ekf_.getX();
-            double y = slam_obstacles[i].second - ekf_.getY();
+            double x = slam_obstacles[i].first - ekf_.get_x();
+            double y = slam_obstacles[i].second - ekf_.get_y();
             double r = std::sqrt(x * x + y * y);
             if (r >= lidar_range_min_ && r <= lidar_range_max_){
                 slam_marker_msg.action = visualization_msgs::msg::Marker::ADD;
@@ -345,8 +345,8 @@ private:
         tf_broadcaster_->sendTransform(odom_blue_tf_);
 
         // Publish transform from map to odom
-        turtlelib::Vector2D ekf_pose(ekf_.getX(), ekf_.getY());
-        double ekf_theta = ekf_.getTheta();
+        turtlelib::Vector2D ekf_pose(ekf_.get_x(), ekf_.get_y());
+        double ekf_theta = ekf_.get_theta();
         turtlelib::Transform2D T_map_body(ekf_pose, ekf_theta);
         turtlelib::Vector2D odom_pose(x_, y_);
         turtlelib::Transform2D T_odom_body(odom_pose, theta_);
@@ -385,8 +385,8 @@ private:
         // Publish slam path
         slam_path_msg_.header.stamp = this->get_clock()->now();
         slam_pose_stamped_msg_.header.stamp = this->get_clock()->now();
-        slam_pose_stamped_msg_.pose.position.x = ekf_.getX();
-        slam_pose_stamped_msg_.pose.position.y = ekf_.getY();
+        slam_pose_stamped_msg_.pose.position.x = ekf_.get_x();
+        slam_pose_stamped_msg_.pose.position.y = ekf_.get_y();
         slam_path_msg_.poses.push_back(slam_pose_stamped_msg_);
         slam_path_pub_->publish(slam_path_msg_);
     }
