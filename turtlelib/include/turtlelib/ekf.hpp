@@ -25,9 +25,12 @@ namespace turtlelib{
         void set_obstacles(std::vector<std::pair<double, double>> obstacles);
 
         std::vector<std::pair<double, double>> get_obstacles();
-    }
+    
+    private:
+        int max_landmarks;
+        std::vector<double> state_vector;
+    };
+
 }
-
-
 
 #endif
