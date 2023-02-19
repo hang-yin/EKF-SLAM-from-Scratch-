@@ -18,6 +18,8 @@ find_package(turtlelib REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(nav_msgs REQUIRED)
+find_package(visualization_msgs REQUIRED)
+find_package(Armadillo)
 
 add_executable(slam src/slam.cpp)
 
@@ -33,9 +35,11 @@ ament_target_dependencies(slam
   tf2_ros
   nav_msgs
   turtlelib
+  visualization_msgs
 )
 
 target_link_libraries(slam turtlelib::turtlelib)
+target_link_libraries(slam ${ARMADILLO_LIBRARIES})
 
 install (TARGETS
   slam

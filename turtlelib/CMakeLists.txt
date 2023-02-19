@@ -25,8 +25,6 @@ find_package(Armadillo)
 add_executable(frame_main src/frame_main.cpp)
 target_link_libraries(frame_main turtlelib)
 
-target_link_libraries(turtlelib ${ARMADILLO_LIBRARIES})
-
 # Create a library.  Can specify if it is shared or static but usually
 # you don't need or want to.
 # name is the name of the library without the extension or lib prefix

@@ -7,7 +7,9 @@
 
 namespace turtlelib{
 
-    EKF::EKF(int max_landmarks){
+    EKF::EKF(){}
+
+    void EKF::set_max_landmarks(int max_landmarks){
         this->max_landmarks = max_landmarks;
 
         // Initialize state vectors
@@ -46,7 +48,7 @@ namespace turtlelib{
             obstacles_vector.push_back(obstacles.at(i).second);
         }
         // add the obstacles to the state vector
-        for (int i = 0; i < obstacles_vector.size(); i++){
+        for (int i = 0; i < int(obstacles_vector.size()); i++){
             this->state_vec.at(i + 3) = obstacles_vector.at(i);
         }
     }
@@ -54,7 +56,7 @@ namespace turtlelib{
     std::vector<std::pair<double, double>> EKF::get_obstacles(){
         // convert vector of doubles to a vector of pairs of doubles
         std::vector<std::pair<double, double>> obstacles;
-        for (int i = 3; i < this->state_vec.size(); i += 2){
+        for (int i = 3; i < int(this->state_vec.size()); i += 2){
             std::pair<double, double> obstacle;
             obstacle.first = this->state_vec.at(i);
             obstacle.second = this->state_vec.at(i + 1);

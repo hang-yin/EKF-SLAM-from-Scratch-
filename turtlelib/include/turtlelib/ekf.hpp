@@ -10,7 +10,9 @@
 namespace turtlelib{
     class EKF{
     public:
-        explicit EKF(int max_landmarks);
+        explicit EKF();
+
+        void set_max_landmarks(int max_landmarks);
 
         double get_x();
 

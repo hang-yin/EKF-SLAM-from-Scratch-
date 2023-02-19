@@ -9,7 +9,6 @@
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
-#include "nuturtle_control/srv/initial_pose.hpp"
 #include "nav_msgs/msg/path.hpp"
 #include "sensor_msgs/msg/laser_scan.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
@@ -58,13 +57,13 @@ public:
         // Create subscriber for joint state
         joint_sub_ = create_subscription<sensor_msgs::msg::JointState>("red/joint_states",
                                                                        10,
-                                                                       std::bind(&OdometryNode::joint_callback,
+                                                                       std::bind(&SLAMnode::joint_callback,
                                                                        this,
                                                                        std::placeholders::_1));
         // Create subscriber for fake sensor
         fake_sensor_sub_ = create_subscription<visualization_msgs::msg::MarkerArray>("/fake_sensor",
                                                                                     10,
-                                                                                    std::bind(&OdometryNode::fake_sensor_callback,
+                                                                                    std::bind(&SLAMnode::fake_sensor_callback,
                                                                                               this,
                                                                                               std::placeholders::_1));
 
@@ -75,18 +74,11 @@ public:
 
         // Create a transform broadcaster
         tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
-
-        // Create a service to reset odometry
-        reset_srv_ = create_service<nuturtle_control::srv::InitialPose>("~/initial_pose",
-                                                                        std::bind(&OdometryNode::initial_pose_callback,
-                                                                                  this,
-                                                                                  std::placeholders::_1,
-                                                                                  std::placeholders::_2));
         
         // Create a timer to publish odometry
         rate_ = 200.0;
-        timer_ = create_wall_timer(1s / rate_, std::bind(&OdometryNode::timer_callback, this));
-        slam_marker_timer_ = create_wall_timer(1s / rate_, std::bind(&OdometryNode::slam_marker_callback, this));
+        timer_ = create_wall_timer(1s / rate_, std::bind(&SLAMnode::timer_callback, this));
+        slam_marker_timer_ = create_wall_timer(1s / rate_, std::bind(&SLAMnode::slam_marker_callback, this));
 
         // Create a path publishers
         odom_path_pub_ = create_publisher<nav_msgs::msg::Path>("/blue/path", 10);
@@ -143,6 +135,9 @@ public:
         right_wheel_vel_ = 0.0;
 
         ekf_obstacles_set_ = true;
+
+        // Initialize ekf object with 10 obstacles
+        ekf_.set_max_landmarks(10);
     }
 
 private:
@@ -175,7 +170,6 @@ private:
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr slam_marker_pub_;
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_sub_;
     rclcpp::Subscription<visualization_msgs::msg::MarkerArray>::SharedPtr fake_sensor_sub_;
-    rclcpp::Service<nuturtle_control::srv::InitialPose>::SharedPtr reset_srv_;
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr odom_path_pub_;
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr slam_path_pub_;
     rclcpp::TimerBase::SharedPtr timer_;
@@ -183,7 +177,7 @@ private:
     std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
 
     // Declare EKF class object
-    turtlelib::EKF ekf_(10);
+    turtlelib::EKF ekf_;
 
     // Declare slam obstacles array, it is a vector of double pairs
     std::vector<std::pair<double, double>> slam_obstacles_;
@@ -236,16 +230,6 @@ private:
         theta_ = robot_state.theta;
     }
 
-    // Callback function for initial_pose service
-    void initial_pose_callback(const nuturtle_control::srv::InitialPose::Request::SharedPtr,
-                               const nuturtle_control::srv::InitialPose::Response::SharedPtr)
-    {
-        x_ = 0.0;
-        y_ = 0.0;
-        theta_ = 0.0;
-        diff_drive_ = turtlelib::DiffDrive();
-    }
-
     // Callback function for fake sensor
     void fake_sensor_callback(const visualization_msgs::msg::MarkerArray::SharedPtr msg)
     {
@@ -255,7 +239,7 @@ private:
         }
         // Extract x and y values from marker array
         std::vector<std::pair<double, double>> fake_sensor_obstacles;
-        for (int i = 0; i < msg->markers.size(); i++) {
+        for (int i = 0; i < int(msg->markers.size()); i++) {
             double x = msg->markers[i].pose.position.x;
             double y = msg->markers[i].pose.position.y;
             fake_sensor_obstacles.push_back(std::make_pair(x, y));
@@ -270,7 +254,7 @@ private:
         wheel_angles.left = left_wheel_pos_;
         wheel_angles.right = right_wheel_pos_;
         turtlelib::Twist2D twist = diff_drive_.forwardKinematicsWithTwist(wheel_angles);
-        for (int i = 0; i < fake_sensor_obstacles.size(); i++) {
+        for (int i = 0; i < int(fake_sensor_obstacles.size()); i++) {
             ekf_.predict(twist);
             ekf_.correct(i, fake_sensor_obstacles[i].first, fake_sensor_obstacles[i].second);
         }
@@ -284,7 +268,7 @@ private:
         // Get slam obstacles
         std::vector<std::pair<double, double>> slam_obstacles = ekf_.get_obstacles();
         // Create slam marker array
-        for (int i = 0; i < slam_obstacles.size(); i++) {
+        for (int i = 0; i < int(slam_obstacles.size()); i++) {
             visualization_msgs::msg::Marker slam_marker_msg;
             slam_marker_msg.header.frame_id = "map";
             slam_marker_msg.header.stamp = this->now();
@@ -345,16 +329,20 @@ private:
         tf_broadcaster_->sendTransform(odom_blue_tf_);
 
         // Publish transform from map to odom
-        turtlelib::Vector2D ekf_pose(ekf_.get_x(), ekf_.get_y());
+        turtlelib::Vector2D ekf_pose;
+        ekf_pose.x = ekf_.get_x();
+        ekf_pose.y = ekf_.get_y();
         double ekf_theta = ekf_.get_theta();
         turtlelib::Transform2D T_map_body(ekf_pose, ekf_theta);
-        turtlelib::Vector2D odom_pose(x_, y_);
+        turtlelib::Vector2D odom_pose;
+        odom_pose.x = x_;
+        odom_pose.y = y_;
         turtlelib::Transform2D T_odom_body(odom_pose, theta_);
         turtlelib::Transform2D T_map_odom = T_map_body * T_odom_body.inv();
         map_odom_tf_.header.stamp = this->now();
-        map_odom_tf_.transform.translation.x = T_map_odom.x();
-        map_odom_tf_.transform.translation.y = T_map_odom.y();
-        q.setRPY(0.0, 0.0, T_map_odom.theta());
+        map_odom_tf_.transform.translation.x = T_map_odom.translation().x;
+        map_odom_tf_.transform.translation.y = T_map_odom.translation().y;
+        q.setRPY(0.0, 0.0, T_map_odom.rotation());
         map_odom_tf_.transform.rotation.x = q.x();
         map_odom_tf_.transform.rotation.y = q.y();
         map_odom_tf_.transform.rotation.z = q.z();
