@@ -97,5 +97,42 @@ namespace turtlelib{
         // update sigma matrix
         this->sigma_mat_minus = A * this->sigma_mat_prev * A.t() + Q;
     }
+
+    void EKF::correct(int obstacle_id, double obstacle_x, double obstacle_y){
+        double x_diff = state_vec_minus.at(3+2*obstacle_id) - state_vec_minus.at(0);
+        double y_diff = state_vec_minus.at(3+2*obstacle_id+1) - state_vec_minus.at(1);
+        double distance = sqrt(x_diff*x_diff + y_diff*y_diff);
+        double angle = atan2(y_diff, x_diff) - state_vec_minus.at(2);
+        
+        // get H matrix
+        arma::mat H = arma::mat(2, 3 + 2 * this->max_landmarks, arma::fill::zeros);
+        H.at(0, 1) = -x_diff/distance;
+        H.at(0, 2) = -y_diff/distance;
+        H.at(0, 3+2*obstacle_id) = x_diff/distance;
+        H.at(0, 3+2*obstacle_id+1) = y_diff/distance;
+        H.at(1, 0) = -1;
+        H.at(1, 1) = y_diff/(distance*distance);
+        H.at(1, 2) = -x_diff/(distance*distance);
+        H.at(1, 3+2*obstacle_id) = -y_diff/(distance*distance);
+        H.at(1, 3+2*obstacle_id+1) = x_diff/(distance*distance);
+
+        // get z and h
+        arma::vec z = {sqrt(pow(obstacle_x, 2) + pow(obstacle_y, 2)), normalize_angle(atan2(obstacle_y, obstacle_x))};
+        arma::vec h = {distance, angle};
+
+        // get K matrix
+        arma::mat R = arma::mat(2, 2, arma::fill::eye);
+        arma::mat K = this->sigma_mat_minus * H.t() * (H * this->sigma_mat_minus * H.t() + R).i();
+
+        // update state vector
+        this->state_vec = this->state_vec_minus + K * (z - h);
+
+        // update sigma matrix
+        this->sigma_mat = (arma::mat(3 + 2 * this->max_landmarks, 3 + 2 * this->max_landmarks, arma::fill::eye) - K * H) * this->sigma_mat_minus;
+
+        // update previous variales
+        this->state_vec_prev = this->state_vec;
+        this->sigma_mat_prev = this->sigma_mat;
+    }
     
 }
