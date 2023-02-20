@@ -109,7 +109,7 @@ public:
         odom_.twist.twist.angular.z = 0.0;
 
         // Initialize odom->blue/base_footprint transform
-        odom_blue_tf_.header.frame_id = odom_id_;
+        odom_blue_tf_.header.frame_id = "nusim/world";
         odom_blue_tf_.child_frame_id = body_id_;
         odom_blue_tf_.transform.translation.x = 0.0;
         odom_blue_tf_.transform.translation.y = 0.0;
@@ -122,9 +122,16 @@ public:
         // Initialize map to odom transform
         map_odom_tf_.header.frame_id = "map";
         map_odom_tf_.child_frame_id = odom_id_;
+        map_odom_tf_.transform.translation.x = 0.0;
+        map_odom_tf_.transform.translation.y = 0.0;
+        map_odom_tf_.transform.translation.z = 0.0;
+        map_odom_tf_.transform.rotation.x = 0.0;
+        map_odom_tf_.transform.rotation.y = 0.0;
+        map_odom_tf_.transform.rotation.z = 0.0;
+        map_odom_tf_.transform.rotation.w = 1.0;
 
         // Initialize odom->green/base_footprint transform
-        odom_green_tf_.header.frame_id = "map";
+        odom_green_tf_.header.frame_id = odom_id_;
         odom_green_tf_.child_frame_id = "green/base_footprint";
         odom_green_tf_.transform.translation.x = 0.0;
         odom_green_tf_.transform.translation.y = 0.0;
@@ -345,6 +352,8 @@ private:
         ekf_pose.x = ekf_.get_x();
         ekf_pose.y = ekf_.get_y();
         double ekf_theta = ekf_.get_theta();
+        // log x, y, and theta
+        RCLCPP_INFO(this->get_logger(), "x, y, theta: %f, %f, %f", ekf_pose.x, ekf_pose.y, ekf_theta);
         turtlelib::Transform2D T_map_body(ekf_pose, ekf_theta);
         turtlelib::Vector2D odom_pose;
         odom_pose.x = x_;
@@ -352,8 +361,6 @@ private:
         turtlelib::Transform2D T_odom_body(odom_pose, theta_);
         turtlelib::Transform2D T_map_odom = T_map_body * T_odom_body.inv();
         map_odom_tf_.header.stamp = this->now();
-        // log T_map_odom
-        RCLCPP_INFO(this->get_logger(), "T_map_odom: %f, %f, %f", T_map_odom.translation().x, T_map_odom.translation().y, T_map_odom.rotation());
         map_odom_tf_.transform.translation.x = T_map_odom.translation().x;
         map_odom_tf_.transform.translation.y = T_map_odom.translation().y;
         q.setRPY(0.0, 0.0, T_map_odom.rotation());

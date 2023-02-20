@@ -26,15 +26,15 @@ namespace turtlelib{
     }
 
     double EKF::get_x(){
-        return this->state_vec.at(0);
-    }
-
-    double EKF::get_y(){
         return this->state_vec.at(1);
     }
 
-    double EKF::get_theta(){
+    double EKF::get_y(){
         return this->state_vec.at(2);
+    }
+
+    double EKF::get_theta(){
+        return this->state_vec.at(0);
     }
 
     void EKF::set_obstacles(std::vector<std::pair<double, double>> obstacles){
@@ -42,14 +42,19 @@ namespace turtlelib{
         int number_of_obstacles = obstacles.size();
         int considered_obstacles = std::min(number_of_obstacles, this->max_landmarks);
 
+        double distance = 0.0;
+        double angle = 0.0;
+
         std::vector<double> obstacles_vector;
         for (int i = 0; i < considered_obstacles; i++){
-            obstacles_vector.push_back(obstacles.at(i).first);
-            obstacles_vector.push_back(obstacles.at(i).second);
+            distance = std::sqrt(std::pow(obstacles.at(i).first, 2) + std::pow(obstacles.at(i).second, 2));
+            angle = std::atan2(obstacles.at(i).second, obstacles.at(i).first);
+            obstacles_vector.push_back(state_vec_prev.at(1)+distance*std::cos(state_vec_prev.at(0)+angle));
+            obstacles_vector.push_back(state_vec_prev.at(2)+distance*std::sin(state_vec_prev.at(0)+angle));
         }
         // add the obstacles to the state vector
         for (int i = 0; i < int(obstacles_vector.size()); i++){
-            this->state_vec.at(i + 3) = obstacles_vector.at(i);
+            this->state_vec_prev.at(i + 3) = obstacles_vector.at(i);
         }
     }
 
@@ -88,12 +93,12 @@ namespace turtlelib{
         // get A matrix
         arma::mat A = arma::mat(3 + 2 * this->max_landmarks, 3 + 2 * this->max_landmarks, arma::fill::eye);
         if (almost_equal(twist.w, 0.0)){
-            A.at(1, 2) = -twist.x * sin(this->state_vec_prev.at(0));
-            A.at(2, 2) = twist.x * cos(this->state_vec_prev.at(0));
+            A.at(1, 0) += -twist.x * sin(this->state_vec_prev.at(0));
+            A.at(2, 0) += twist.x * cos(this->state_vec_prev.at(0));
         }
         else{
-            A.at(0, 2) = -twist.x/twist.w*cos(this->state_vec_prev.at(0) + twist.x/twist.w*cos(this->state_vec_prev.at(0)+twist.w));
-            A.at(1, 2) = -twist.x/twist.w*sin(this->state_vec_prev.at(0) + twist.x/twist.w*sin(this->state_vec_prev.at(0)+twist.w));
+            A.at(0, 0) += -twist.x/twist.w*cos(this->state_vec_prev.at(0) + twist.x/twist.w*cos(this->state_vec_prev.at(0)+twist.w));
+            A.at(1, 0) += -twist.x/twist.w*sin(this->state_vec_prev.at(0) + twist.x/twist.w*sin(this->state_vec_prev.at(0)+twist.w));
         }
 
         // update sigma matrix
@@ -101,10 +106,10 @@ namespace turtlelib{
     }
 
     void EKF::correct(int obstacle_id, double obstacle_x, double obstacle_y){
-        double x_diff = state_vec_minus.at(3+2*obstacle_id) - state_vec_minus.at(0);
-        double y_diff = state_vec_minus.at(3+2*obstacle_id+1) - state_vec_minus.at(1);
+        double x_diff = state_vec_minus.at(3+2*obstacle_id) - state_vec_minus.at(1);
+        double y_diff = state_vec_minus.at(3+2*obstacle_id+1) - state_vec_minus.at(2);
         double distance = sqrt(x_diff*x_diff + y_diff*y_diff);
-        double angle = atan2(y_diff, x_diff) - state_vec_minus.at(2);
+        double angle = atan2(y_diff, x_diff) - state_vec_minus.at(0);
         
         // get H matrix
         arma::mat H = arma::mat(2, 3 + 2 * this->max_landmarks, arma::fill::zeros);
