@@ -23,6 +23,7 @@ public:
     {
         // Declare parameters
         declare_parameter("body_id", "blue/base_footprint");
+        declare_parameter("world_id", "nusim/world");
         declare_parameter("odom_id", "odom");
         declare_parameter("wheel_left", "left_default");
         declare_parameter("wheel_right", "right_default");
@@ -53,6 +54,7 @@ public:
         obstacle_height_ = get_parameter("obstacle_height").as_double();
         lidar_range_min_ = get_parameter("min_lidar_range").as_double();
         lidar_range_max_ = get_parameter("max_lidar_range").as_double();
+        world_id_ = get_parameter("world_id").as_string();
 
         // Create subscriber for joint state
         joint_sub_ = create_subscription<sensor_msgs::msg::JointState>("red/joint_states",
@@ -122,8 +124,15 @@ public:
         map_odom_tf_.child_frame_id = odom_id_;
 
         // Initialize odom->green/base_footprint transform
-        odom_green_tf_.header.frame_id = odom_id_;
+        odom_green_tf_.header.frame_id = "map";
         odom_green_tf_.child_frame_id = "green/base_footprint";
+        odom_green_tf_.transform.translation.x = 0.0;
+        odom_green_tf_.transform.translation.y = 0.0;
+        odom_green_tf_.transform.translation.z = 0.0;
+        odom_green_tf_.transform.rotation.x = 0.0;
+        odom_green_tf_.transform.rotation.y = 0.0;
+        odom_green_tf_.transform.rotation.z = 0.0;
+        odom_green_tf_.transform.rotation.w = 1.0;
 
         // Initialize x, y, theta, wheel positions and velocities
         x_ = 0.0;
@@ -144,6 +153,7 @@ private:
     // Declare variables
     std::string body_id_;
     std::string odom_id_;
+    std::string world_id_;
     std::string wheel_left_;
     std::string wheel_right_;
     double x_;
@@ -228,6 +238,8 @@ private:
         x_ = robot_state.x;
         y_ = robot_state.y;
         theta_ = robot_state.theta;
+        // log info
+        // RCLCPP_INFO(this->get_logger(), "x: %f, y: %f, theta: %f", x_, y_, theta_);
     }
 
     // Callback function for fake sensor
@@ -340,6 +352,8 @@ private:
         turtlelib::Transform2D T_odom_body(odom_pose, theta_);
         turtlelib::Transform2D T_map_odom = T_map_body * T_odom_body.inv();
         map_odom_tf_.header.stamp = this->now();
+        // log T_map_odom
+        RCLCPP_INFO(this->get_logger(), "T_map_odom: %f, %f, %f", T_map_odom.translation().x, T_map_odom.translation().y, T_map_odom.rotation());
         map_odom_tf_.transform.translation.x = T_map_odom.translation().x;
         map_odom_tf_.transform.translation.y = T_map_odom.translation().y;
         q.setRPY(0.0, 0.0, T_map_odom.rotation());

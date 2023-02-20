@@ -292,7 +292,8 @@ private:
 
     if (!draw_only_){
       // Broadcast transform
-      transformStamped_.header.stamp = this->get_clock()->now();
+      // stamp needs to be 0.2s ahead of the current time
+      transformStamped_.header.stamp = this->now() + rclcpp::Duration(0, 200000000);
       // robot_state_ = diff_drive_.getRobotState();
       transformStamped_.transform.translation.x = robot_state_.x;
       transformStamped_.transform.translation.y = robot_state_.y;
@@ -490,6 +491,7 @@ private:
     }
     laser_scan_msg_.header.stamp = this->get_clock()->now();
     laser_scan_msg_.header.frame_id = "red/base_scan";
+    // laser_scan_msg_.header.frame_id = "red/base_footprint";
     laser_scan_msg_.angle_min = angle_min_;
     laser_scan_msg_.angle_max = angle_max_;
     laser_scan_msg_.angle_increment = angle_increment_;
