@@ -37,6 +37,7 @@ namespace turtlelib{
         WheelAngles phi;
         WheelVelocities phi_dot;
         RobotState state;
+        Twist2D twist;
         // following default parameters defined in nuturtle_description/diff_params.yaml
         double D = 0.08;
         double R = 0.033; 
@@ -68,10 +69,9 @@ namespace turtlelib{
         /// \return robot configuration
         RobotState forwardKinematics(WheelAngles phi);
 
-        /// \brief forward kinematics: wheel angles to robot configuration
-        /// \param phi wheel angles
+        /// \brief Gets current twist
         /// \return twist
-        Twist2D forwardKinematicsWithTwist(WheelAngles phi);
+        Twist2D getTwist(void);
 
         /// \brief Gets current robot configuration
         /// \return robot configuration

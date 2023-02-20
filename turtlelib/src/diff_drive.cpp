@@ -14,12 +14,14 @@ namespace turtlelib{
         state.x = 0.0;
         state.y = 0.0;
         state.theta = 0.0;
+        twist = Twist2D();
     }
 
     DiffDrive::DiffDrive(RobotState state, WheelAngles phi, WheelVelocities phi_dot){
         this->state = state;
         this->phi = phi;
         this->phi_dot = phi_dot;
+        this->twist = Twist2D();
     }
 
     void DiffDrive::setState(RobotState state){
@@ -45,7 +47,6 @@ namespace turtlelib{
 
         // calculate twist
         // refer to forward kinematics section of the Kinematics notes
-        Twist2D twist;
         twist.x = (R / 2.0) * (phi_dot1.left + phi_dot1.right);
         twist.y = 0.0;
         twist.w = (R / (D * 2.0)) * (phi_dot1.right - phi_dot1.left);
@@ -66,36 +67,8 @@ namespace turtlelib{
         return state1;
     }
 
-    Twist2D DiffDrive::forwardKinematicsWithTwist(WheelAngles phi1){
-        // calculate wheel velocities
-        WheelVelocities phi_dot1;
-        phi_dot1.left = (phi1.left - this->phi.left) / 1.0;
-        phi_dot1.right = (phi1.right - this->phi.right) / 1.0;
-
-        // update wheel angles
-        this->phi = phi1;
-
-        // calculate twist
-        // refer to forward kinematics section of the Kinematics notes
-        Twist2D twist;
-        twist.x = (R / 2.0) * (phi_dot1.left + phi_dot1.right);
-        twist.y = 0.0;
-        twist.w = (R / (D * 2.0)) * (phi_dot1.right - phi_dot1.left);
-
-        // calculate new state
-        RobotState state1;
-        Transform2D T_bbprime = integrate_twist(twist);
-        Vector2D new_vector;
-        new_vector.x = this->state.x;
-        new_vector.y = this->state.y;
-        Transform2D T_wb = Transform2D(new_vector, state.theta);
-        Transform2D T_wbprime = T_wb * T_bbprime;
-        state1.x = T_wbprime.translation().x;
-        state1.y = T_wbprime.translation().y;
-        state1.theta = T_wbprime.rotation();
-        this->state = state1;
-
-        return twist;
+    Twist2D DiffDrive::getTwist(void){
+        return this->twist;
     }
 
     RobotState DiffDrive::getRobotState(void){

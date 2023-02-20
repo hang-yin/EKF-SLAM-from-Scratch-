@@ -92,7 +92,7 @@ public:
         slam_pose_stamped_msg_.header.frame_id = "map";
 
         // Initialize odometry
-        odom_.header.frame_id = odom_id_;
+        odom_.header.frame_id = "nusim/world";
         odom_.child_frame_id = body_id_;
         odom_.pose.pose.position.x = 0.0;
         odom_.pose.pose.position.y = 0.0;
@@ -211,6 +211,9 @@ private:
     // Declare a bool value for setting up ekf obstacles
     bool ekf_obstacles_set_;
 
+    // Declare twist
+    turtlelib::Twist2D twist_;
+
     // Callback function for joint state
     void joint_callback(const sensor_msgs::msg::JointState::SharedPtr msg)
     {
@@ -241,6 +244,7 @@ private:
 
         // Update x, y, theta through forward kinematics
         turtlelib::RobotState robot_state = diff_drive_.forwardKinematics(new_wheel_angles);
+        twist_ = diff_drive_.getTwist();
         // turtlelib::RobotState robot_state = diff_drive_.forwardKinematics(wheel_angles);
         x_ = robot_state.x;
         y_ = robot_state.y;
@@ -269,12 +273,14 @@ private:
             ekf_obstacles_set_ = false;
         }
         // Update ekf
+        /*
         turtlelib::WheelAngles wheel_angles;
         wheel_angles.left = left_wheel_pos_;
         wheel_angles.right = right_wheel_pos_;
         turtlelib::Twist2D twist = diff_drive_.forwardKinematicsWithTwist(wheel_angles);
+        */
         for (int i = 0; i < int(fake_sensor_obstacles.size()); i++) {
-            ekf_.predict(twist);
+            ekf_.predict(twist_);
             ekf_.correct(i, fake_sensor_obstacles[i].first, fake_sensor_obstacles[i].second);
         }
         slam_obstacles_ = ekf_.get_obstacles();
@@ -284,26 +290,26 @@ private:
     {
         // Clear slam marker array
         slam_marker_array_msg_.markers.clear();
-        // Get slam obstacles
-        std::vector<std::pair<double, double>> slam_obstacles = ekf_.get_obstacles();
         // Create slam marker array
-        for (int i = 0; i < int(slam_obstacles.size()); i++) {
+        for (int i = 0; i < int(slam_obstacles_.size()); i++) {
             visualization_msgs::msg::Marker slam_marker_msg;
             slam_marker_msg.header.frame_id = "map";
             slam_marker_msg.header.stamp = this->now();
             slam_marker_msg.ns = "slam_obstacles";
             slam_marker_msg.id = i;
             slam_marker_msg.type = visualization_msgs::msg::Marker::CYLINDER;
-            double x = slam_obstacles[i].first - ekf_.get_x();
-            double y = slam_obstacles[i].second - ekf_.get_y();
+            double x = slam_obstacles_[i].first - ekf_.get_x();
+            double y = slam_obstacles_[i].second - ekf_.get_y();
             double r = std::sqrt(x * x + y * y);
             if (r >= lidar_range_min_ && r <= lidar_range_max_){
                 slam_marker_msg.action = visualization_msgs::msg::Marker::ADD;
             }else{
                 slam_marker_msg.action = visualization_msgs::msg::Marker::DELETE;
             }
-            slam_marker_msg.pose.position.x = slam_obstacles[i].first;
-            slam_marker_msg.pose.position.y = slam_obstacles[i].second;
+            slam_marker_msg.pose.position.x = slam_obstacles_[i].first;
+            slam_marker_msg.pose.position.y = slam_obstacles_[i].second;
+            // log info
+            RCLCPP_INFO(this->get_logger(), "x: %f, y: %f", slam_obstacles_[i].first, slam_obstacles_[i].second);
             slam_marker_msg.pose.position.z = 0.0;
             slam_marker_msg.pose.orientation.x = 0.0;
             slam_marker_msg.pose.orientation.y = 0.0;
