@@ -266,13 +266,13 @@ public:
     fake_sensor_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("/fake_sensor", 10);
 
     // Create a fake sensor timer that runs at 5Hz
-    fake_sensor_timer_ = create_wall_timer(1s / rate_, std::bind(&NuSimNode::fake_sensor_callback, this));
+    fake_sensor_timer_ = create_wall_timer(0.2s, std::bind(&NuSimNode::fake_sensor_callback, this));
 
     // Create laser scan publisher
     laser_scan_pub_ = create_publisher<sensor_msgs::msg::LaserScan>("/scan", 10);
 
     // Create a laser scan timer that runs at 5Hz
-    laser_scan_timer_ = create_wall_timer(1s / rate_, std::bind(&NuSimNode::laser_scan_callback, this));
+    laser_scan_timer_ = create_wall_timer(0.2s, std::bind(&NuSimNode::laser_scan_callback, this));
 
     // Create a path publisher on /red/path topic
     path_pub_ = create_publisher<nav_msgs::msg::Path>("/red/path", 10);
@@ -280,6 +280,9 @@ public:
     // Initialize path message
     path_msg_.header.frame_id = "nusim/world";
     pose_stamped_msg_.header.frame_id = "nusim/world";
+
+    fake_sensor_ready_ = false;
+    laser_scan_ready_ = false;
   }
 
 private:
@@ -320,6 +323,18 @@ private:
       pose_stamped_msg_.pose.position.y = robot_state_.y;
       path_msg_.poses.push_back(pose_stamped_msg_);
       path_pub_->publish(path_msg_);
+
+      // Publish fake sensor data
+      if (fake_sensor_ready_){
+        fake_sensor_pub_->publish(fake_sensor_marker_array_);
+      }
+      fake_sensor_ready_ = false;
+
+      // Publish laser scan data
+      if (laser_scan_ready_){
+        laser_scan_pub_->publish(laser_scan_msg_);  
+      }
+      laser_scan_ready_ = false;
     }
 
     // Publish obstacle marker array
@@ -481,7 +496,8 @@ private:
       fake_sensor_marker_array_.markers[i].pose.position.y = obstacles_y_[i];
       */
     }
-    fake_sensor_pub_->publish(fake_sensor_marker_array_);
+    // fake_sensor_pub_->publish(fake_sensor_marker_array_);
+    fake_sensor_ready_ = true;
   }
 
   void laser_scan_callback(){
@@ -630,7 +646,8 @@ private:
       }
     }
     // publish the laser scan message
-    laser_scan_pub_->publish(laser_scan_msg_);
+    // laser_scan_pub_->publish(laser_scan_msg_);
+    laser_scan_ready_ = true;
   }
 
   rclcpp::TimerBase::SharedPtr timer_;
@@ -690,6 +707,8 @@ private:
   nav_msgs::msg::Path path_msg_;
   geometry_msgs::msg::PoseStamped pose_stamped_msg_;
   bool draw_only_;
+  bool fake_sensor_ready_;
+  bool laser_scan_ready_;
 };
 
 int main(int argc, char *argv[])

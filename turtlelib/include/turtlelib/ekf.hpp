@@ -36,6 +36,8 @@ namespace turtlelib{
         arma::mat sigma_mat;
         arma::mat sigma_mat_minus;
         arma::mat sigma_mat_prev;
+        RobotState state;
+        arma::vec q;
 
     };
 

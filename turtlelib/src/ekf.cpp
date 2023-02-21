@@ -23,6 +23,9 @@ namespace turtlelib{
         this->sigma_mat_minus.submat(3,3,3+2*max_landmarks-1,3+2*max_landmarks-1) = sigma_submat;
         this->sigma_mat_prev = this->sigma_mat_minus;
         this->sigma_mat = this->sigma_mat_minus;
+
+        this->state = {0.0,0.0,0.0};
+        this->q = arma::vec(3, arma::fill::zeros);
     }
 
     double EKF::get_x(){
@@ -49,13 +52,18 @@ namespace turtlelib{
         for (int i = 0; i < considered_obstacles; i++){
             distance = std::sqrt(std::pow(obstacles.at(i).first, 2) + std::pow(obstacles.at(i).second, 2));
             angle = std::atan2(obstacles.at(i).second, obstacles.at(i).first);
-            obstacles_vector.push_back(state_vec_prev.at(1)+distance*std::cos(state_vec_prev.at(0)+angle));
-            obstacles_vector.push_back(state_vec_prev.at(2)+distance*std::sin(state_vec_prev.at(0)+angle));
+            obstacles_vector.push_back(state.x+distance*std::cos(state.theta+angle));
+            obstacles_vector.push_back(state.y+distance*std::sin(state.theta+angle));
         }
         // add the obstacles to the state vector
+        /*
         for (int i = 0; i < int(obstacles_vector.size()); i++){
             this->state_vec_prev.at(i + 3) = obstacles_vector.at(i);
         }
+        */
+       // convert obstacles_vector to an arma::vec
+        arma::vec obstacles_arma = arma::vec(obstacles_vector);
+        this->state_vec_prev = arma::join_cols(this->q, obstacles_arma);
     }
 
     std::vector<std::pair<double, double>> EKF::get_obstacles(){
@@ -82,23 +90,23 @@ namespace turtlelib{
         }
         else{
             this->state_vec_minus.at(0) = this->state_vec_prev.at(0) + twist.w;
-            this->state_vec_minus.at(1) = this->state_vec_prev.at(1) -
-                                          twist.x/twist.w*sin(this->state_vec_prev.at(0) +
-                                          twist.x/twist.w*sin(this->state_vec_prev.at(0)+twist.w));
-            this->state_vec_minus.at(2) = this->state_vec_prev.at(2) -
-                                          twist.x/twist.w*cos(this->state_vec_prev.at(0) +
-                                          twist.x/twist.w*cos(this->state_vec_prev.at(0)+twist.w));
+            this->state_vec_minus.at(1) = this->state_vec_prev.at(1) +
+                                          (-twist.x/twist.w)*sin(this->state_vec_prev.at(0)) +
+                                          (twist.x/twist.w)*sin(this->state_vec_prev.at(0)+twist.w);
+            this->state_vec_minus.at(2) = this->state_vec_prev.at(2) +
+                                          (-twist.x/twist.w)*cos(this->state_vec_prev.at(0)) +
+                                          (twist.x/twist.w)*cos(this->state_vec_prev.at(0)+twist.w);
         }
 
         // get A matrix
         arma::mat A = arma::mat(3 + 2 * this->max_landmarks, 3 + 2 * this->max_landmarks, arma::fill::eye);
         if (almost_equal(twist.w, 0.0)){
-            A.at(1, 0) += -twist.x * sin(this->state_vec_prev.at(0));
-            A.at(2, 0) += twist.x * cos(this->state_vec_prev.at(0));
+            A.at(1, 0) += (-twist.x) * sin(this->state_vec_prev.at(0));
+            A.at(2, 0) += (twist.x) * cos(this->state_vec_prev.at(0));
         }
         else{
-            A.at(0, 0) += -twist.x/twist.w*cos(this->state_vec_prev.at(0) + twist.x/twist.w*cos(this->state_vec_prev.at(0)+twist.w));
-            A.at(1, 0) += -twist.x/twist.w*sin(this->state_vec_prev.at(0) + twist.x/twist.w*sin(this->state_vec_prev.at(0)+twist.w));
+            A.at(1, 0) += (-twist.x/twist.w)*cos(this->state_vec_prev.at(0)) + (twist.x/twist.w)*cos(this->state_vec_prev.at(0)+twist.w);
+            A.at(2, 0) += (-twist.x/twist.w)*sin(this->state_vec_prev.at(0)) + (twist.x/twist.w)*sin(this->state_vec_prev.at(0)+twist.w);
         }
 
         // update sigma matrix
@@ -126,13 +134,17 @@ namespace turtlelib{
         // get z and h
         arma::vec z = {sqrt(pow(obstacle_x, 2) + pow(obstacle_y, 2)), normalize_angle(atan2(obstacle_y, obstacle_x))};
         arma::vec h = {distance, angle};
+        h.at(1) = normalize_angle(h.at(1));
 
         // get K matrix
         arma::mat R = arma::mat(2, 2, arma::fill::eye);
         arma::mat K = this->sigma_mat_minus * H.t() * (H * this->sigma_mat_minus * H.t() + R).i();
 
+        arma::vec diff = z - h;
+        diff.at(1) = normalize_angle(diff.at(1));
+
         // update state vector
-        this->state_vec = this->state_vec_minus + K * (z - h);
+        this->state_vec = this->state_vec_minus + K * (diff);
 
         // update sigma matrix
         this->sigma_mat = (arma::mat(3 + 2 * this->max_landmarks, 3 + 2 * this->max_landmarks, arma::fill::eye) - K * H) * this->sigma_mat_minus;

@@ -152,8 +152,8 @@ public:
 
         ekf_obstacles_set_ = true;
 
-        // Initialize ekf object with 10 obstacles
-        ekf_.set_max_landmarks(10);
+        // Initialize ekf object with 3 obstacles for now
+        ekf_.set_max_landmarks(3);
     }
 
 private:
@@ -231,6 +231,7 @@ private:
         turtlelib::WheelAngles wheel_angles;
         wheel_angles.left = left_wheel_pos_;
         wheel_angles.right = right_wheel_pos_;
+
         turtlelib::WheelVelocities wheel_velocities;
         wheel_velocities.left = left_wheel_vel_;
         wheel_velocities.right = right_wheel_vel_;
@@ -241,9 +242,12 @@ private:
         turtlelib::WheelAngles new_wheel_angles;
         new_wheel_angles.left = left_wheel_pos_ + left_wheel_vel_ / rate_;
         new_wheel_angles.right = right_wheel_pos_ + right_wheel_vel_ / rate_;
+        
+
 
         // Update x, y, theta through forward kinematics
         turtlelib::RobotState robot_state = diff_drive_.forwardKinematics(new_wheel_angles);
+        // turtlelib::RobotState robot_state = diff_drive_.forwardKinematics(wheel_angles);
         twist_ = diff_drive_.getTwist();
         // turtlelib::RobotState robot_state = diff_drive_.forwardKinematics(wheel_angles);
         x_ = robot_state.x;
@@ -251,6 +255,9 @@ private:
         theta_ = robot_state.theta;
         // log info
         // RCLCPP_INFO(this->get_logger(), "x: %f, y: %f, theta: %f", x_, y_, theta_);
+
+        diff_drive_.setWheelAngles(wheel_angles);
+
     }
 
     // Callback function for fake sensor
@@ -279,6 +286,13 @@ private:
         wheel_angles.right = right_wheel_pos_;
         turtlelib::Twist2D twist = diff_drive_.forwardKinematicsWithTwist(wheel_angles);
         */
+        /*
+        turtlelib::WheelAngles wheel_angles;
+        wheel_angles.left = left_wheel_pos_;
+        wheel_angles.right = right_wheel_pos_;
+        turtlelib::RobotState robot_state = diff_drive_.forwardKinematics(wheel_angles);
+        twist_ = diff_drive_.getTwist();
+        */
         for (int i = 0; i < int(fake_sensor_obstacles.size()); i++) {
             ekf_.predict(twist_);
             ekf_.correct(i, fake_sensor_obstacles[i].first, fake_sensor_obstacles[i].second);
@@ -289,7 +303,7 @@ private:
     void slam_marker_callback()
     {
         // Clear slam marker array
-        slam_marker_array_msg_.markers.clear();
+        slam_marker_array_msg_.markers.resize(slam_obstacles_.size());
         // Create slam marker array
         for (int i = 0; i < int(slam_obstacles_.size()); i++) {
             visualization_msgs::msg::Marker slam_marker_msg;
@@ -309,7 +323,7 @@ private:
             slam_marker_msg.pose.position.x = slam_obstacles_[i].first;
             slam_marker_msg.pose.position.y = slam_obstacles_[i].second;
             // log info
-            RCLCPP_INFO(this->get_logger(), "x: %f, y: %f", slam_obstacles_[i].first, slam_obstacles_[i].second);
+            // RCLCPP_INFO(this->get_logger(), "Obstacle x: %f, y: %f", slam_obstacles_[i].first, slam_obstacles_[i].second);
             slam_marker_msg.pose.position.z = 0.0;
             slam_marker_msg.pose.orientation.x = 0.0;
             slam_marker_msg.pose.orientation.y = 0.0;
@@ -322,7 +336,7 @@ private:
             slam_marker_msg.color.r = 0.0;
             slam_marker_msg.color.g = 1.0;
             slam_marker_msg.color.b = 0.0;
-            slam_marker_array_msg_.markers.push_back(slam_marker_msg);
+            slam_marker_array_msg_.markers[i] = slam_marker_msg;
         }
         // Publish slam marker array
         slam_marker_pub_->publish(slam_marker_array_msg_);
