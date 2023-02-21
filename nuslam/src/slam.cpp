@@ -275,10 +275,13 @@ private:
             fake_sensor_obstacles.push_back(std::make_pair(x, y));
         }
         // Set ekf obstacles
+        /*
         if (ekf_obstacles_set_) {
             ekf_.set_obstacles(fake_sensor_obstacles);
             ekf_obstacles_set_ = false;
         }
+        */
+        ekf_.set_obstacles(fake_sensor_obstacles);
         // Update ekf
         /*
         turtlelib::WheelAngles wheel_angles;
@@ -294,6 +297,7 @@ private:
         twist_ = diff_drive_.getTwist();
         */
         for (int i = 0; i < int(fake_sensor_obstacles.size()); i++) {
+            ekf_.set_max_landmarks(3);
             ekf_.predict(twist_);
             ekf_.correct(i, fake_sensor_obstacles[i].first, fake_sensor_obstacles[i].second);
         }
