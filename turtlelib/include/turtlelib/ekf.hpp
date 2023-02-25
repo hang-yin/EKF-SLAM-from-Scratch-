@@ -27,6 +27,7 @@ namespace turtlelib{
         void set_obstacles(std::vector<std::pair<double, double>> obstacles);
 
         std::vector<std::pair<double, double>> get_obstacles();
+        arma::vec get_obstacles_1();
     
     private:
         int max_landmarks;

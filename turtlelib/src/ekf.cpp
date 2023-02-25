@@ -3,6 +3,7 @@
 #include "turtlelib/diff_drive.hpp"
 #include "turtlelib/rigid2d.hpp"
 #include <iostream>
+#include <fstream>
 #include <cmath>
 
 namespace turtlelib{
@@ -25,7 +26,6 @@ namespace turtlelib{
         this->sigma_mat = this->sigma_mat_minus;
 
         this->state = {0.0,0.0,0.0};
-        this->q = arma::vec(3, arma::fill::zeros);
     }
 
     double EKF::get_x(){
@@ -55,27 +55,27 @@ namespace turtlelib{
             obstacles_vector.push_back(state.x+distance*std::cos(state.theta+angle));
             obstacles_vector.push_back(state.y+distance*std::sin(state.theta+angle));
         }
-        // add the obstacles to the state vector
-        /*
-        for (int i = 0; i < int(obstacles_vector.size()); i++){
-            this->state_vec_prev.at(i + 3) = obstacles_vector.at(i);
-        }
-        */
-       // convert obstacles_vector to an arma::vec
+
+        // convert obstacles_vector to an arma::vec
         arma::vec obstacles_arma = arma::vec(obstacles_vector);
-        this->state_vec_prev = arma::join_cols(this->q, obstacles_arma);
+        arma::vec temp = arma::vec(3, arma::fill::zeros);
+        this->state_vec_prev = arma::join_cols(temp, obstacles_arma);
     }
 
     std::vector<std::pair<double, double>> EKF::get_obstacles(){
         // convert vector of doubles to a vector of pairs of doubles
         std::vector<std::pair<double, double>> obstacles;
-        for (int i = 3; i < int(this->state_vec.size()); i += 2){
+        for (int i = 3; i < int(this->state_vec_prev.size()); i += 2){
             std::pair<double, double> obstacle;
-            obstacle.first = this->state_vec.at(i);
-            obstacle.second = this->state_vec.at(i + 1);
+            obstacle.first = this->state_vec_prev.at(i);
+            obstacle.second = this->state_vec_prev.at(i + 1);
             obstacles.push_back(obstacle);
         }
         return obstacles;
+    }
+
+    arma::vec EKF::get_obstacles_1(){
+        return this->state_vec_prev;
     }
 
     void EKF::predict(Twist2D twist){
@@ -83,20 +83,17 @@ namespace turtlelib{
         Q.submat(0, 0, 2, 2) = arma::mat(3, 3, arma::fill::eye);
 
         // update state vector
+        arma::vec ut = arma::vec(3+2*this->max_landmarks, arma::fill::zeros);
         if (almost_equal(twist.w, 0.0)){
-            this->state_vec_minus.at(0) = this->state_vec_prev.at(0);
-            this->state_vec_minus.at(1) = this->state_vec_prev.at(1) + twist.x * cos(this->state_vec_prev.at(0));
-            this->state_vec_minus.at(2) = this->state_vec_prev.at(2) + twist.x * sin(this->state_vec_prev.at(0));
+            ut.at(1) = twist.x*cos(this->state_vec_prev.at(0));
+            ut.at(2) = twist.x*sin(this->state_vec_prev.at(0));
         }
         else{
-            this->state_vec_minus.at(0) = this->state_vec_prev.at(0) + twist.w;
-            this->state_vec_minus.at(1) = this->state_vec_prev.at(1) +
-                                          (-twist.x/twist.w)*sin(this->state_vec_prev.at(0)) +
-                                          (twist.x/twist.w)*sin(this->state_vec_prev.at(0)+twist.w);
-            this->state_vec_minus.at(2) = this->state_vec_prev.at(2) +
-                                          (-twist.x/twist.w)*cos(this->state_vec_prev.at(0)) +
-                                          (twist.x/twist.w)*cos(this->state_vec_prev.at(0)+twist.w);
+            ut.at(0) = twist.w;
+            ut.at(1) = ((-twist.x/twist.w)*sin(this->state_vec_prev.at(0))) + ((twist.x/twist.w)*sin(this->state_vec_prev.at(0) + twist.w));
+            ut.at(2) = ((-twist.x/twist.w)*cos(this->state_vec_prev.at(0))) + ((twist.x/twist.w)*cos(this->state_vec_prev.at(0) + twist.w));
         }
+        this->state_vec_minus = this->state_vec_prev + ut;
 
         // get A matrix
         arma::mat A = arma::mat(3 + 2 * this->max_landmarks, 3 + 2 * this->max_landmarks, arma::fill::eye);

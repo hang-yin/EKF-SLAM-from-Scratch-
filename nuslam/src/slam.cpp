@@ -12,6 +12,7 @@
 #include "nav_msgs/msg/path.hpp"
 #include "sensor_msgs/msg/laser_scan.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
+#include <armadillo>
 
 using namespace std::chrono_literals;
 
@@ -275,33 +276,27 @@ private:
             fake_sensor_obstacles.push_back(std::make_pair(x, y));
         }
         // Set ekf obstacles
-        /*
+
+        // log where the obstacles are
+        for (int i = 0; i < int(fake_sensor_obstacles.size()); i++) {
+            // RCLCPP_INFO(this->get_logger(), "Fake x: %f, y: %f", fake_sensor_obstacles[i].first, fake_sensor_obstacles[i].second);
+        }
+        
         if (ekf_obstacles_set_) {
             ekf_.set_obstacles(fake_sensor_obstacles);
             ekf_obstacles_set_ = false;
         }
-        */
-        ekf_.set_obstacles(fake_sensor_obstacles);
-        // Update ekf
-        /*
-        turtlelib::WheelAngles wheel_angles;
-        wheel_angles.left = left_wheel_pos_;
-        wheel_angles.right = right_wheel_pos_;
-        turtlelib::Twist2D twist = diff_drive_.forwardKinematicsWithTwist(wheel_angles);
-        */
-        /*
-        turtlelib::WheelAngles wheel_angles;
-        wheel_angles.left = left_wheel_pos_;
-        wheel_angles.right = right_wheel_pos_;
-        turtlelib::RobotState robot_state = diff_drive_.forwardKinematics(wheel_angles);
-        twist_ = diff_drive_.getTwist();
-        */
+        ekf_.predict(twist_);
         for (int i = 0; i < int(fake_sensor_obstacles.size()); i++) {
-            ekf_.set_max_landmarks(3);
-            ekf_.predict(twist_);
+            //ekf_.set_max_landmarks(3);    
             ekf_.correct(i, fake_sensor_obstacles[i].first, fake_sensor_obstacles[i].second);
         }
         slam_obstacles_ = ekf_.get_obstacles();
+        arma::vec state_prev = ekf_.get_obstacles_1();
+        // log state_prev
+        for (int i = 0; i < int(state_prev.size()); i++) {
+            // RCLCPP_INFO(this->get_logger(), "state_prev: %f", state_prev[i]);
+        }
     }
 
     void slam_marker_callback()
@@ -319,16 +314,13 @@ private:
             double x = slam_obstacles_[i].first - ekf_.get_x();
             double y = slam_obstacles_[i].second - ekf_.get_y();
             double r = std::sqrt(x * x + y * y);
-            if (r >= lidar_range_min_ && r <= lidar_range_max_){
-                slam_marker_msg.action = visualization_msgs::msg::Marker::ADD;
-            }else{
-                slam_marker_msg.action = visualization_msgs::msg::Marker::DELETE;
-            }
+            slam_marker_msg.action = visualization_msgs::msg::Marker::ADD;
+
             slam_marker_msg.pose.position.x = slam_obstacles_[i].first;
             slam_marker_msg.pose.position.y = slam_obstacles_[i].second;
             // log info
-            // RCLCPP_INFO(this->get_logger(), "Obstacle x: %f, y: %f", slam_obstacles_[i].first, slam_obstacles_[i].second);
-            slam_marker_msg.pose.position.z = 0.0;
+            // RCLCPP_INFO(this->get_logger(), "Obstacle i: %d, x: %f, y: %f", i, slam_obstacles_[i].first, slam_obstacles_[i].second);
+            slam_marker_msg.pose.position.z = 0.125;
             slam_marker_msg.pose.orientation.x = 0.0;
             slam_marker_msg.pose.orientation.y = 0.0;
             slam_marker_msg.pose.orientation.z = 0.0;
@@ -377,7 +369,7 @@ private:
         ekf_pose.y = ekf_.get_y();
         double ekf_theta = ekf_.get_theta();
         // log x, y, and theta
-        RCLCPP_INFO(this->get_logger(), "x, y, theta: %f, %f, %f", ekf_pose.x, ekf_pose.y, ekf_theta);
+        // RCLCPP_INFO(this->get_logger(), "x, y, theta: %f, %f, %f", ekf_pose.x, ekf_pose.y, ekf_theta);
         turtlelib::Transform2D T_map_body(ekf_pose, ekf_theta);
         turtlelib::Vector2D odom_pose;
         odom_pose.x = x_;
