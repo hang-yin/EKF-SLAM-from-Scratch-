@@ -243,19 +243,13 @@ private:
         turtlelib::WheelAngles new_wheel_angles;
         new_wheel_angles.left = left_wheel_pos_ + left_wheel_vel_ / rate_;
         new_wheel_angles.right = right_wheel_pos_ + right_wheel_vel_ / rate_;
-        
-
 
         // Update x, y, theta through forward kinematics
         turtlelib::RobotState robot_state = diff_drive_.forwardKinematics(new_wheel_angles);
-        // turtlelib::RobotState robot_state = diff_drive_.forwardKinematics(wheel_angles);
         twist_ = diff_drive_.getTwist();
-        // turtlelib::RobotState robot_state = diff_drive_.forwardKinematics(wheel_angles);
         x_ = robot_state.x;
         y_ = robot_state.y;
         theta_ = robot_state.theta;
-        // log info
-        // RCLCPP_INFO(this->get_logger(), "x: %f, y: %f, theta: %f", x_, y_, theta_);
 
         diff_drive_.setWheelAngles(wheel_angles);
 
@@ -275,28 +269,19 @@ private:
             double y = msg->markers[i].pose.position.y;
             fake_sensor_obstacles.push_back(std::make_pair(x, y));
         }
-        // Set ekf obstacles
 
-        // log where the obstacles are
-        for (int i = 0; i < int(fake_sensor_obstacles.size()); i++) {
-            // RCLCPP_INFO(this->get_logger(), "Fake x: %f, y: %f", fake_sensor_obstacles[i].first, fake_sensor_obstacles[i].second);
-        }
-        
+        // Set ekf obstacles
         if (ekf_obstacles_set_) {
             ekf_.set_obstacles(fake_sensor_obstacles);
             ekf_obstacles_set_ = false;
         }
-        ekf_.predict(twist_);
-        for (int i = 0; i < int(fake_sensor_obstacles.size()); i++) {
-            //ekf_.set_max_landmarks(3);    
+        
+        for (int i = 0; i < int(fake_sensor_obstacles.size()); i++) {  
+            ekf_.predict(twist_);
             ekf_.correct(i, fake_sensor_obstacles[i].first, fake_sensor_obstacles[i].second);
         }
         slam_obstacles_ = ekf_.get_obstacles();
         arma::vec state_prev = ekf_.get_obstacles_1();
-        // log state_prev
-        for (int i = 0; i < int(state_prev.size()); i++) {
-            // RCLCPP_INFO(this->get_logger(), "state_prev: %f", state_prev[i]);
-        }
     }
 
     void slam_marker_callback()
@@ -313,13 +298,10 @@ private:
             slam_marker_msg.type = visualization_msgs::msg::Marker::CYLINDER;
             double x = slam_obstacles_[i].first - ekf_.get_x();
             double y = slam_obstacles_[i].second - ekf_.get_y();
-            double r = std::sqrt(x * x + y * y);
             slam_marker_msg.action = visualization_msgs::msg::Marker::ADD;
 
             slam_marker_msg.pose.position.x = slam_obstacles_[i].first;
             slam_marker_msg.pose.position.y = slam_obstacles_[i].second;
-            // log info
-            // RCLCPP_INFO(this->get_logger(), "Obstacle i: %d, x: %f, y: %f", i, slam_obstacles_[i].first, slam_obstacles_[i].second);
             slam_marker_msg.pose.position.z = 0.125;
             slam_marker_msg.pose.orientation.x = 0.0;
             slam_marker_msg.pose.orientation.y = 0.0;
