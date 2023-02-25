@@ -83,20 +83,17 @@ namespace turtlelib{
         Q.submat(0, 0, 2, 2) = arma::mat(3, 3, arma::fill::eye);
 
         // update state vector
+        arma::vec ut = arma::vec(3+2*this->max_landmarks, arma::fill::zeros);
         if (almost_equal(twist.w, 0.0)){
-            this->state_vec_minus.at(0) = this->state_vec_prev.at(0);
-            this->state_vec_minus.at(1) = this->state_vec_prev.at(1) + twist.x * cos(this->state_vec_prev.at(0));
-            this->state_vec_minus.at(2) = this->state_vec_prev.at(2) + twist.x * sin(this->state_vec_prev.at(0));
+            ut.at(1) = twist.x*cos(this->state_vec_prev.at(0));
+            ut.at(2) = twist.x*sin(this->state_vec_prev.at(0));
         }
         else{
-            this->state_vec_minus.at(0) = this->state_vec_prev.at(0) + twist.w;
-            this->state_vec_minus.at(1) = this->state_vec_prev.at(1) +
-                                          (-twist.x/twist.w)*sin(this->state_vec_prev.at(0)) +
-                                          (twist.x/twist.w)*sin(this->state_vec_prev.at(0)+twist.w);
-            this->state_vec_minus.at(2) = this->state_vec_prev.at(2) +
-                                          (-twist.x/twist.w)*cos(this->state_vec_prev.at(0)) +
-                                          (twist.x/twist.w)*cos(this->state_vec_prev.at(0)+twist.w);
+            ut.at(0) = twist.w;
+            ut.at(1) = ((-twist.x/twist.w)*sin(this->state_vec_prev.at(0))) + ((twist.x/twist.w)*sin(this->state_vec_prev.at(0) + twist.w));
+            ut.at(2) = ((-twist.x/twist.w)*cos(this->state_vec_prev.at(0))) + ((twist.x/twist.w)*cos(this->state_vec_prev.at(0) + twist.w));
         }
+        this->state_vec_minus = this->state_vec_prev + ut;
 
         // get A matrix
         arma::mat A = arma::mat(3 + 2 * this->max_landmarks, 3 + 2 * this->max_landmarks, arma::fill::eye);

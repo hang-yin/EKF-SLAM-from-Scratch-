@@ -279,7 +279,7 @@ private:
 
         // log where the obstacles are
         for (int i = 0; i < int(fake_sensor_obstacles.size()); i++) {
-            RCLCPP_INFO(this->get_logger(), "Fake x: %f, y: %f", fake_sensor_obstacles[i].first, fake_sensor_obstacles[i].second);
+            // RCLCPP_INFO(this->get_logger(), "Fake x: %f, y: %f", fake_sensor_obstacles[i].first, fake_sensor_obstacles[i].second);
         }
         
         if (ekf_obstacles_set_) {
@@ -295,7 +295,7 @@ private:
         arma::vec state_prev = ekf_.get_obstacles_1();
         // log state_prev
         for (int i = 0; i < int(state_prev.size()); i++) {
-            RCLCPP_INFO(this->get_logger(), "state_prev: %f", state_prev[i]);
+            // RCLCPP_INFO(this->get_logger(), "state_prev: %f", state_prev[i]);
         }
     }
 
@@ -319,7 +319,7 @@ private:
             slam_marker_msg.pose.position.x = slam_obstacles_[i].first;
             slam_marker_msg.pose.position.y = slam_obstacles_[i].second;
             // log info
-            RCLCPP_INFO(this->get_logger(), "Obstacle i: %d, x: %f, y: %f", i, slam_obstacles_[i].first, slam_obstacles_[i].second);
+            // RCLCPP_INFO(this->get_logger(), "Obstacle i: %d, x: %f, y: %f", i, slam_obstacles_[i].first, slam_obstacles_[i].second);
             slam_marker_msg.pose.position.z = 0.125;
             slam_marker_msg.pose.orientation.x = 0.0;
             slam_marker_msg.pose.orientation.y = 0.0;
