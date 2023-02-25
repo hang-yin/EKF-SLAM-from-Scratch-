@@ -69,7 +69,7 @@ target_link_libraries(circle "${cpp_typesupport_target}")
 target_link_libraries(odometry turtlelib::turtlelib)
 target_link_libraries(odometry "${cpp_typesupport_target}")
 
-install (TARGETS
+install(TARGETS
   turtle_control
   circle
   odometry

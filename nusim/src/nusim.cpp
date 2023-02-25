@@ -26,7 +26,7 @@ class NuSimNode : public rclcpp::Node
 {
 public:
   NuSimNode()
-      : Node("nusim")
+  : Node("nusim")
   {
     // Declare parameters
     declare_parameter("rate", 200.0);
@@ -72,16 +72,14 @@ public:
     // Check obstacles input, if length of vectors are not equal, exit node
     const auto obstacles_x = get_parameter("obstacles_x").as_double_array();
     const auto obstacles_y = get_parameter("obstacles_y").as_double_array();
-    if (obstacles_x.size() != obstacles_y.size())
-    {
+    if (obstacles_x.size() != obstacles_y.size()) {
       RCLCPP_ERROR(this->get_logger(), "Length of obstacles vectors are not equal");
       rclcpp::shutdown();
     }
 
     auto obstacles_r = get_parameter("obstacles_r").as_double();
     // Check obstacles input, if radius is negative, exit node
-    if (obstacles_r < 0)
-    {
+    if (obstacles_r < 0) {
       RCLCPP_ERROR(this->get_logger(), "Radius of obstacles cannot be negative");
       rclcpp::shutdown();
     }
@@ -93,8 +91,7 @@ public:
     obstacles_x_ = obstacles_x;
     obstacles_y_ = obstacles_y;
     // If obstacle list is empty, use default obstacles
-    if (obstacles_x_.size() == 0)
-    {
+    if (obstacles_x_.size() == 0) {
       std::vector<double> default_obstacles_x = {-0.6, 0.7, 0.5};
       std::vector<double> default_obstacles_y = {-0.8, -0.7, 0.9};
       obstacles_x_ = default_obstacles_x;
@@ -102,8 +99,7 @@ public:
     }
     obstacles_r_ = obstacles_r;
     marker_array_.markers.resize(obstacles_x_.size());
-    for (size_t i = 0; i < obstacles_x_.size(); i++)
-    {
+    for (size_t i = 0; i < obstacles_x_.size(); i++) {
       marker_array_.markers[i].header.frame_id = "nusim/world";
       marker_array_.markers[i].header.stamp = get_clock()->now();
       marker_array_.markers[i].ns = "obstacles";
@@ -134,8 +130,7 @@ public:
 
     // Set rate
     rate_ = get_parameter("rate").as_double();
-    if (rate_ <= 0)
-    {
+    if (rate_ <= 0) {
       rate_ = 200.0;
     }
 
@@ -144,21 +139,21 @@ public:
 
     // Create reset service of empty type
     reset_srv_ = create_service<std_srvs::srv::Empty>(
-        "~/reset",
-        std::bind(
-            &NuSimNode::reset_callback,
-            this,
-            std::placeholders::_1,
-            std::placeholders::_2));
+      "~/reset",
+      std::bind(
+        &NuSimNode::reset_callback,
+        this,
+        std::placeholders::_1,
+        std::placeholders::_2));
 
     // Create teleport service of Teleport type
     teleport_srv_ = create_service<nusim::srv::Teleport>(
-        "~/teleport",
-        std::bind(
-            &NuSimNode::teleport_callback,
-            this,
-            std::placeholders::_1,
-            std::placeholders::_2));
+      "~/teleport",
+      std::bind(
+        &NuSimNode::teleport_callback,
+        this,
+        std::placeholders::_1,
+        std::placeholders::_2));
 
     // Set initial pose
     x0_ = get_parameter("x0").as_double();
@@ -181,11 +176,13 @@ public:
     transformStamped_.transform.rotation.w = q0_.w();
 
     // Create subscriber for red/wheel_cmd topic
-    wheel_cmd_sub_ = create_subscription<nuturtlebot_msgs::msg::WheelCommands>("/wheel_cmd",
-                                                                               10,
-                                                                               std::bind(&NuSimNode::wheel_cmd_callback,
-                                                                                         this,
-                                                                                         std::placeholders::_1));
+    wheel_cmd_sub_ = create_subscription<nuturtlebot_msgs::msg::WheelCommands>(
+      "/wheel_cmd",
+      10,
+      std::bind(
+        &NuSimNode::wheel_cmd_callback,
+        this,
+        std::placeholders::_1));
 
     // Initialize wheel velocities
     left_wheel_velocity_ = 0.0;
@@ -203,7 +200,8 @@ public:
     motor_cmd_per_rad_sec_ = get_parameter("motor_cmd_per_rad_sec").as_double();
 
     // Create publisher for wall marker array
-    wall_marker_array_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("~/wall_markers", 10);
+    wall_marker_array_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>(
+      "~/wall_markers", 10);
 
     // Declare wall-related parameters
     declare_parameter("~x_length", 10.0);
@@ -215,8 +213,7 @@ public:
 
     // Initialize wall marker array centered at (0,0), 0.25m tall, and 0.1m thick
     wall_marker_array_.markers.resize(4);
-    for (int i = 0; i < 4; i++)
-    {
+    for (int i = 0; i < 4; i++) {
       wall_marker_array_.markers[i].header.frame_id = "nusim/world";
       wall_marker_array_.markers[i].header.stamp = this->now();
       wall_marker_array_.markers[i].ns = "walls";
@@ -293,7 +290,7 @@ private:
     msg.data = timestep_;
     timestep_pub_->publish(msg);
 
-    if (!draw_only_){
+    if (!draw_only_) {
       // Broadcast transform
       // stamp needs to be 0.2s ahead of the current time
       transformStamped_.header.stamp = this->now() + rclcpp::Duration(0, 200000000);
@@ -309,8 +306,12 @@ private:
       broadcaster_->sendTransform(transformStamped_);
 
       // Publish sensor data
-      int left_encoder = static_cast<int>((left_wheel_position_ + left_wheel_velocity_ / rate_) / encoder_ticks_per_rad_) % 4096; // 12-bit encoder
-      int right_encoder = static_cast<int>((right_wheel_position_ + left_wheel_velocity_ / rate_) / encoder_ticks_per_rad_) % 4096;
+      int left_encoder =
+        static_cast<int>((left_wheel_position_ + left_wheel_velocity_ / rate_) /
+        encoder_ticks_per_rad_) % 4096;                                                                                                       // 12-bit encoder
+      int right_encoder =
+        static_cast<int>((right_wheel_position_ + left_wheel_velocity_ / rate_) /
+        encoder_ticks_per_rad_) % 4096;
       nuturtlebot_msgs::msg::SensorData sensor_data;
       sensor_data.left_encoder = left_encoder;
       sensor_data.right_encoder = right_encoder;
@@ -325,14 +326,14 @@ private:
       path_pub_->publish(path_msg_);
 
       // Publish fake sensor data
-      if (fake_sensor_ready_){
+      if (fake_sensor_ready_) {
         fake_sensor_pub_->publish(fake_sensor_marker_array_);
       }
       fake_sensor_ready_ = false;
 
       // Publish laser scan data
-      if (laser_scan_ready_){
-        laser_scan_pub_->publish(laser_scan_msg_);  
+      if (laser_scan_ready_) {
+        laser_scan_pub_->publish(laser_scan_msg_);
       }
       laser_scan_ready_ = false;
     }
@@ -345,8 +346,9 @@ private:
     timestep_++;
   }
 
-  void reset_callback(const std::shared_ptr<std_srvs::srv::Empty::Request>,
-                      std::shared_ptr<std_srvs::srv::Empty::Response>)
+  void reset_callback(
+    const std::shared_ptr<std_srvs::srv::Empty::Request>,
+    std::shared_ptr<std_srvs::srv::Empty::Response>)
   {
     // Reset timestep to zero
     timestep_ = 0;
@@ -359,8 +361,9 @@ private:
     transformStamped_.transform.rotation.w = q0_.w();
   }
 
-  void teleport_callback(const std::shared_ptr<nusim::srv::Teleport::Request> request,
-                         std::shared_ptr<nusim::srv::Teleport::Response>)
+  void teleport_callback(
+    const std::shared_ptr<nusim::srv::Teleport::Request> request,
+    std::shared_ptr<nusim::srv::Teleport::Response>)
   {
     // Set transform
     transformStamped_.transform.translation.x = request->x;
@@ -375,8 +378,7 @@ private:
 
   void wheel_cmd_callback(const nuturtlebot_msgs::msg::WheelCommands::SharedPtr msg)
   {
-    if (draw_only_)
-    {
+    if (draw_only_) {
       return;
     }
     std::normal_distribution<double> vel_dist(0.0, input_noise_);
@@ -385,12 +387,10 @@ private:
     left_wheel_velocity_ *= motor_cmd_per_rad_sec_;
     right_wheel_velocity_ *= motor_cmd_per_rad_sec_;
 
-    if (msg->left_velocity != 0)
-    {
+    if (msg->left_velocity != 0) {
       left_wheel_velocity_ += vel_dist(gen_);
     }
-    if (msg->right_velocity != 0)
-    {
+    if (msg->right_velocity != 0) {
       right_wheel_velocity_ += vel_dist(gen_);
     }
 
@@ -405,13 +405,18 @@ private:
     robot_state_ = diff_drive_.forwardKinematics(new_wheel_angles);
 
     // Collision detection
-    for (int i = 0; i < int(obstacles_x_.size()); i++){
-      double distance = sqrt(pow(robot_state_.x - obstacles_x_[i], 2) + pow(robot_state_.y - obstacles_y_[i], 2));
-      if (distance < (obstacles_r_ + collision_radius_)){
-        double collision_angle = atan2(robot_state_.y - obstacles_y_[i], robot_state_.x - obstacles_x_[i]);
+    for (int i = 0; i < int(obstacles_x_.size()); i++) {
+      double distance =
+        sqrt(pow(robot_state_.x - obstacles_x_[i], 2) + pow(robot_state_.y - obstacles_y_[i], 2));
+      if (distance < (obstacles_r_ + collision_radius_)) {
+        double collision_angle = atan2(
+          robot_state_.y - obstacles_y_[i],
+          robot_state_.x - obstacles_x_[i]);
         turtlelib::RobotState new_robot_state;
-        new_robot_state.x = obstacles_x_[i] + (collision_radius_+obstacles_r_) * cos(collision_angle);
-        new_robot_state.y = obstacles_y_[i] + (collision_radius_+obstacles_r_) * sin(collision_angle);
+        new_robot_state.x = obstacles_x_[i] + (collision_radius_ + obstacles_r_) * cos(
+          collision_angle);
+        new_robot_state.y = obstacles_y_[i] + (collision_radius_ + obstacles_r_) * sin(
+          collision_angle);
         new_robot_state.theta = robot_state_.theta;
         diff_drive_.setState(new_robot_state);
       }
@@ -435,8 +440,7 @@ private:
 
   void fake_sensor_callback()
   {
-    if (draw_only_)
-    {
+    if (draw_only_) {
       return;
     }
     turtlelib::Vector2D robot_position;
@@ -446,8 +450,7 @@ private:
     turtlelib::Transform2D Tbw = Twb.inv();
 
     fake_sensor_marker_array_.markers.resize(obstacles_x_.size());
-    for (auto i = 0; i < (int)(obstacles_x_.size()); i++)
-    {
+    for (auto i = 0; i < (int)(obstacles_x_.size()); i++) {
       fake_sensor_marker_array_.markers[i].header.frame_id = "red/base_footprint";
       fake_sensor_marker_array_.markers[i].header.stamp = this->get_clock()->now();
       // fake_sensor_marker_array_.markers[i].ns = "fake_sensor";
@@ -472,14 +475,12 @@ private:
       obstacle_position.x = obstacles_x_[i];
       obstacle_position.y = obstacles_y_[i];
       turtlelib::Vector2D obstacle_position_body = Tbw(obstacle_position);
-      double distance_to_obstacle = sqrt(pow(obstacle_position_body.x, 2) +
-                                         pow(obstacle_position_body.y, 2));
-      if (distance_to_obstacle < max_range_)
-      {
+      double distance_to_obstacle = sqrt(
+        pow(obstacle_position_body.x, 2) +
+        pow(obstacle_position_body.y, 2));
+      if (distance_to_obstacle < max_range_) {
         fake_sensor_marker_array_.markers[i].action = visualization_msgs::msg::Marker::ADD;
-      }
-      else
-      {
+      } else {
         fake_sensor_marker_array_.markers[i].action = visualization_msgs::msg::Marker::DELETE;
       }
 
@@ -487,22 +488,24 @@ private:
       std::normal_distribution<double> obstacle_dist_dist(0.0, basic_sensor_variance_);
       double obstacle_noise_x = obstacle_dist_dist(gen_);
       double obstacle_noise_y = obstacle_dist_dist(gen_);
-      fake_sensor_marker_array_.markers[i].pose.position.x = obstacle_position_body.x + obstacle_noise_x;
-      fake_sensor_marker_array_.markers[i].pose.position.y = obstacle_position_body.y + obstacle_noise_y;
+      fake_sensor_marker_array_.markers[i].pose.position.x = obstacle_position_body.x +
+        obstacle_noise_x;
+      fake_sensor_marker_array_.markers[i].pose.position.y = obstacle_position_body.y +
+        obstacle_noise_y;
 
       /*
-      fake_sensor_marker_array_.markers[i].action = visualization_msgs::msg::Marker::ADD;
-      fake_sensor_marker_array_.markers[i].pose.position.x = obstacles_x_[i];
-      fake_sensor_marker_array_.markers[i].pose.position.y = obstacles_y_[i];
-      */
+           fake_sensor_marker_array_.markers[i].action = visualization_msgs::msg::Marker::ADD;
+           fake_sensor_marker_array_.markers[i].pose.position.x = obstacles_x_[i];
+           fake_sensor_marker_array_.markers[i].pose.position.y = obstacles_y_[i];
+         */
     }
     // fake_sensor_pub_->publish(fake_sensor_marker_array_);
     fake_sensor_ready_ = true;
   }
 
-  void laser_scan_callback(){
-    if (draw_only_)
-    {
+  void laser_scan_callback()
+  {
+    if (draw_only_) {
       return;
     }
     laser_scan_msg_.header.stamp = this->get_clock()->now();
@@ -526,10 +529,10 @@ private:
     body_vector.y = robot_state_.y;
     turtlelib::Transform2D Twb(body_vector, robot_state_.theta);
 
-    for (auto i = 0; i < number_of_samples_; i++){
+    for (auto i = 0; i < number_of_samples_; i++) {
       std::vector<double> line_distances;
       // deal with the obstacles
-      for (auto i = 0; i < int(obstacles_x_.size()); i++){
+      for (auto i = 0; i < int(obstacles_x_.size()); i++) {
         turtlelib::Vector2D obstacle_vector;
         obstacle_vector.x = obstacles_x_[i] + laser_noise_dist(gen_);
         obstacle_vector.y = obstacles_y_[i] + laser_noise_dist(gen_);
@@ -541,7 +544,7 @@ private:
         max_range_vector.y = max_lidar_range_ * sin(current_sensor_angle);
 
         turtlelib::Transform2D Two(obstacle_vector);
-        turtlelib::Transform2D Tob = (Two.inv())*Twb;
+        turtlelib::Transform2D Tob = (Two.inv()) * Twb;
 
         min_range_vector = Tob(min_range_vector);
         max_range_vector = Tob(max_range_vector);
@@ -554,7 +557,7 @@ private:
         double dx = x2 - x1;
         double dy = y2 - y1;
         double dr = sqrt(pow(dx, 2) + pow(dy, 2));
-        double D = x1*y2 - x2*y1;
+        double D = x1 * y2 - x2 * y1;
         double discriminant = pow(obstacles_r_, 2) * pow(dr, 2) - pow(D, 2);
 
         // if intersection with this obstacle
@@ -562,17 +565,17 @@ private:
         double x_intercept2 = 0.0;
         double y_intercept1 = 0.0;
         double y_intercept2 = 0.0;
-        if (discriminant >= 0.0){
-          if (dy > 0.0){
-            x_intercept1 = (D*dy + dx*sqrt(discriminant)) / pow(dr, 2);
-            x_intercept2 = (D*dy - dx*sqrt(discriminant)) / pow(dr, 2);
-          }else{
-            x_intercept1 = (D*dy - dx*sqrt(discriminant)) / pow(dr, 2);
-            x_intercept2 = (D*dy + dx*sqrt(discriminant)) / pow(dr, 2);
+        if (discriminant >= 0.0) {
+          if (dy > 0.0) {
+            x_intercept1 = (D * dy + dx * sqrt(discriminant)) / pow(dr, 2);
+            x_intercept2 = (D * dy - dx * sqrt(discriminant)) / pow(dr, 2);
+          } else {
+            x_intercept1 = (D * dy - dx * sqrt(discriminant)) / pow(dr, 2);
+            x_intercept2 = (D * dy + dx * sqrt(discriminant)) / pow(dr, 2);
           }
-          
-          y_intercept1 = (-D*dx + abs(dy)*sqrt(discriminant)) / pow(dr, 2);
-          y_intercept2 = (-D*dx - abs(dy)*sqrt(discriminant)) / pow(dr, 2);
+
+          y_intercept1 = (-D * dx + abs(dy) * sqrt(discriminant)) / pow(dr, 2);
+          y_intercept2 = (-D * dx - abs(dy) * sqrt(discriminant)) / pow(dr, 2);
 
           turtlelib::Vector2D intersection1;
           intersection1.x = x_intercept1;
@@ -586,14 +589,16 @@ private:
 
           double distance1 = sqrt(pow(intersection1_body.x, 2) + pow(intersection1_body.y, 2));
           double distance2 = sqrt(pow(intersection2_body.x, 2) + pow(intersection2_body.y, 2));
-          double reflected_distance1 = sqrt(pow(intersection1_body.x - min_lidar_range_ * cos(current_sensor_angle), 2) +
-                                            pow(intersection1_body.y - min_lidar_range_ * sin(current_sensor_angle), 2));
-          double reflected_distance2 = sqrt(pow(intersection2_body.x - min_lidar_range_ * cos(current_sensor_angle), 2) +
-                                            pow(intersection2_body.y - min_lidar_range_ * sin(current_sensor_angle), 2));
-          if (distance1 > reflected_distance1){
+          double reflected_distance1 = sqrt(
+            pow(intersection1_body.x - min_lidar_range_ * cos(current_sensor_angle), 2) +
+            pow(intersection1_body.y - min_lidar_range_ * sin(current_sensor_angle), 2));
+          double reflected_distance2 = sqrt(
+            pow(intersection2_body.x - min_lidar_range_ * cos(current_sensor_angle), 2) +
+            pow(intersection2_body.y - min_lidar_range_ * sin(current_sensor_angle), 2));
+          if (distance1 > reflected_distance1) {
             line_distances.push_back(distance1);
           }
-          if (distance2 > reflected_distance2){
+          if (distance2 > reflected_distance2) {
             line_distances.push_back(distance2);
           }
         }
@@ -604,44 +609,50 @@ private:
       double y1 = robot_state_.y;
       double x2 = x1 + max_lidar_range_ * cos(current_sensor_angle + robot_state_.theta);
       double y2 = y1 + max_lidar_range_ * sin(current_sensor_angle + robot_state_.theta);
-      std::vector<std::pair<double, double>> corners_list = {std::make_pair(-wall_x_/2.0+0.15, -wall_y_/2.0+0.1),
-                                                             std::make_pair(-wall_x_/2.0+0.15, wall_y_/2.0-0.1),
-                                                             std::make_pair(wall_x_/2.0-0.1, wall_y_/2.0-0.1),
-                                                             std::make_pair(wall_x_/2.0-0.1, -wall_y_/2.0+0.1)};
+      std::vector<std::pair<double, double>> corners_list = {std::make_pair(
+          -wall_x_ / 2.0 + 0.15,
+          -wall_y_ / 2.0 + 0.1),
+        std::make_pair(-wall_x_ / 2.0 + 0.15, wall_y_ / 2.0 - 0.1),
+        std::make_pair(wall_x_ / 2.0 - 0.1, wall_y_ / 2.0 - 0.1),
+        std::make_pair(wall_x_ / 2.0 - 0.1, -wall_y_ / 2.0 + 0.1)};
       // loop through lines formed by pairs of corners
-      for (auto i = 0; i < 4; i++){
+      for (auto i = 0; i < 4; i++) {
         auto corner1 = corners_list[i];
-        auto corner2 = corners_list[(i+1)%4];
+        auto corner2 = corners_list[(i + 1) % 4];
         double x3 = corner1.first;
         double y3 = corner1.second;
         double x4 = corner2.first;
         double y4 = corner2.second;
-        double denominator = (x1-x2)*(y3-y4) - (y1-y2)*(x3-x4);
-        if (denominator != 0.0){
-          double x_intercept = ((x1*y2 - y1*x2)*(x3-x4) - (x1-x2)*(x3*y4 - y3*x4)) / denominator;
-          double y_intercept = ((x1*y2 - y1*x2)*(y3-y4) - (y1-y2)*(x3*y4 - y3*x4)) / denominator;
+        double denominator = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+        if (denominator != 0.0) {
+          double x_intercept = ((x1 * y2 - y1 * x2) * (x3 - x4) - (x1 - x2) * (x3 * y4 - y3 * x4)) /
+            denominator;
+          double y_intercept = ((x1 * y2 - y1 * x2) * (y3 - y4) - (y1 - y2) * (x3 * y4 - y3 * x4)) /
+            denominator;
           // check if intersection is within the line segment
           if (x_intercept >= std::min(x1, x2) && x_intercept <= std::max(x1, x2) &&
-              x_intercept >= std::min(x3, x4) && x_intercept <= std::max(x3, x4)){
+            x_intercept >= std::min(x3, x4) && x_intercept <= std::max(x3, x4))
+          {
             turtlelib::Vector2D intersection;
             intersection.x = x_intercept;
             intersection.y = y_intercept;
             turtlelib::Vector2D intersection_body = Twb.inv()(intersection);
-            double distance = sqrt(pow(intersection_body.x, 2) + pow(intersection_body.y, 2)) + laser_noise_dist(gen_);
+            double distance =
+              sqrt(pow(intersection_body.x, 2) + pow(intersection_body.y, 2)) + laser_noise_dist(
+              gen_);
             line_distances.push_back(distance);
           }
         }
       }
       // find the closest intersection
-      if (line_distances.size() > 0){
+      if (line_distances.size() > 0) {
         laser_scan_msg_.ranges[i] = *std::min_element(line_distances.begin(), line_distances.end());
-      }
-      else{
+      } else {
         laser_scan_msg_.ranges[i] = max_lidar_range_;
       }
       current_sensor_angle += angle_increment_;
       // check sensor angle against angle_max_
-      if (current_sensor_angle > angle_max_){
+      if (current_sensor_angle > angle_max_) {
         current_sensor_angle = 0.0;
       }
     }
@@ -655,7 +666,7 @@ private:
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr obstacles_pub_;
   rclcpp::Service<std_srvs::srv::Empty>::SharedPtr reset_srv_;
   rclcpp::Service<nusim::srv::Teleport>::SharedPtr teleport_srv_;
-  // tf2_ros::TransformBroadcaster broadcaster_;
+// tf2_ros::TransformBroadcaster broadcaster_;
   std::unique_ptr<tf2_ros::TransformBroadcaster> broadcaster_;
   geometry_msgs::msg::TransformStamped transformStamped_;
   uint64_t timestep_;
@@ -711,7 +722,7 @@ private:
   bool laser_scan_ready_;
 };
 
-int main(int argc, char *argv[])
+int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
   std::vector<double> obstacles_x = {-0.6, 0.7, 0.5};

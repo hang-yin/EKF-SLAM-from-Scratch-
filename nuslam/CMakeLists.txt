@@ -41,7 +41,7 @@ ament_target_dependencies(slam
 target_link_libraries(slam turtlelib::turtlelib)
 target_link_libraries(slam ${ARMADILLO_LIBRARIES})
 
-install (TARGETS
+install(TARGETS
   slam
   DESTINATION lib/${PROJECT_NAME}
 )
