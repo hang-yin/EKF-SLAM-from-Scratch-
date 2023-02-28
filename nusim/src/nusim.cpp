@@ -291,6 +291,50 @@ private:
     timestep_pub_->publish(msg);
 
     if (!draw_only_) {
+
+      // Update wheel positions
+      left_wheel_position_ += left_wheel_velocity_ / rate_;
+      right_wheel_position_ += right_wheel_velocity_ / rate_;
+
+      // Update robot state
+      turtlelib::WheelAngles new_wheel_angles;
+      new_wheel_angles.left = left_wheel_position_;
+      new_wheel_angles.right = right_wheel_position_;
+      robot_state_ = diff_drive_.forwardKinematics(new_wheel_angles);
+
+      // Collision detection
+      for (int i = 0; i < int(obstacles_x_.size()); i++) {
+        double distance =
+          sqrt(pow(robot_state_.x - obstacles_x_[i], 2) + pow(robot_state_.y - obstacles_y_[i], 2));
+        if (distance < (obstacles_r_ + collision_radius_)) {
+          double collision_angle = atan2(
+            robot_state_.y - obstacles_y_[i],
+            robot_state_.x - obstacles_x_[i]);
+          turtlelib::RobotState new_robot_state;
+          new_robot_state.x = obstacles_x_[i] + (collision_radius_ + obstacles_r_) * cos(
+            collision_angle);
+          new_robot_state.y = obstacles_y_[i] + (collision_radius_ + obstacles_r_) * sin(
+            collision_angle);
+          new_robot_state.theta = robot_state_.theta;
+          diff_drive_.setState(new_robot_state);
+        }
+      }
+
+      // Add slip noise
+      std::uniform_real_distribution<double> slip_dist(-slip_fraction_, slip_fraction_);
+      left_wheel_position_ += slip_dist(gen_);
+      right_wheel_position_ += slip_dist(gen_);
+
+      // Update wheel angles
+      turtlelib::WheelAngles wheel_angles;
+      wheel_angles.left = left_wheel_position_;
+      wheel_angles.right = right_wheel_position_;
+      turtlelib::WheelVelocities wheel_velocities;
+      wheel_velocities.left = left_wheel_velocity_;
+      wheel_velocities.right = right_wheel_velocity_;
+      diff_drive_.setWheelVelocities(wheel_velocities);
+      diff_drive_.setWheelAngles(wheel_angles);
+
       // Broadcast transform
       // stamp needs to be 0.2s ahead of the current time
       transformStamped_.header.stamp = this->now() + rclcpp::Duration(0, 200000000);
@@ -306,11 +350,19 @@ private:
       broadcaster_->sendTransform(transformStamped_);
 
       // Publish sensor data
+      /*
       int left_encoder =
         static_cast<int>((left_wheel_position_ + left_wheel_velocity_ / rate_) /
         encoder_ticks_per_rad_) % 4096;                                                                                                       // 12-bit encoder
       int right_encoder =
         static_cast<int>((right_wheel_position_ + left_wheel_velocity_ / rate_) /
+        encoder_ticks_per_rad_) % 4096;
+      */
+      int left_encoder =
+        static_cast<int>(left_wheel_position_ /
+        encoder_ticks_per_rad_) % 4096;                                                                                            // 12-bit encoder
+      int right_encoder =
+        static_cast<int>(right_wheel_position_ /
         encoder_ticks_per_rad_) % 4096;
       nuturtlebot_msgs::msg::SensorData sensor_data;
       sensor_data.left_encoder = left_encoder;
@@ -393,49 +445,6 @@ private:
     if (msg->right_velocity != 0) {
       right_wheel_velocity_ += vel_dist(gen_);
     }
-
-    // Update wheel positions
-    left_wheel_position_ += left_wheel_velocity_ / rate_;
-    right_wheel_position_ += right_wheel_velocity_ / rate_;
-
-    // Update robot state
-    turtlelib::WheelAngles new_wheel_angles;
-    new_wheel_angles.left = left_wheel_position_;
-    new_wheel_angles.right = right_wheel_position_;
-    robot_state_ = diff_drive_.forwardKinematics(new_wheel_angles);
-
-    // Collision detection
-    for (int i = 0; i < int(obstacles_x_.size()); i++) {
-      double distance =
-        sqrt(pow(robot_state_.x - obstacles_x_[i], 2) + pow(robot_state_.y - obstacles_y_[i], 2));
-      if (distance < (obstacles_r_ + collision_radius_)) {
-        double collision_angle = atan2(
-          robot_state_.y - obstacles_y_[i],
-          robot_state_.x - obstacles_x_[i]);
-        turtlelib::RobotState new_robot_state;
-        new_robot_state.x = obstacles_x_[i] + (collision_radius_ + obstacles_r_) * cos(
-          collision_angle);
-        new_robot_state.y = obstacles_y_[i] + (collision_radius_ + obstacles_r_) * sin(
-          collision_angle);
-        new_robot_state.theta = robot_state_.theta;
-        diff_drive_.setState(new_robot_state);
-      }
-    }
-
-    // Add slip noise
-    std::uniform_real_distribution<double> slip_dist(-slip_fraction_, slip_fraction_);
-    left_wheel_position_ += slip_dist(gen_);
-    right_wheel_position_ += slip_dist(gen_);
-
-    // Update wheel angles
-    turtlelib::WheelAngles wheel_angles;
-    wheel_angles.left = left_wheel_position_;
-    wheel_angles.right = right_wheel_position_;
-    turtlelib::WheelVelocities wheel_velocities;
-    wheel_velocities.left = left_wheel_velocity_;
-    wheel_velocities.right = right_wheel_velocity_;
-    diff_drive_.setWheelVelocities(wheel_velocities);
-    diff_drive_.setWheelAngles(wheel_angles);
   }
 
   void fake_sensor_callback()

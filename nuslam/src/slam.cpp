@@ -248,6 +248,7 @@ private:
     turtlelib::WheelAngles new_wheel_angles;
     new_wheel_angles.left = left_wheel_pos_ + left_wheel_vel_ / rate_;
     new_wheel_angles.right = right_wheel_pos_ + right_wheel_vel_ / rate_;
+    
 
     // Update x, y, theta through forward kinematics
     turtlelib::RobotState robot_state = diff_drive_.forwardKinematics(new_wheel_angles);
@@ -353,8 +354,6 @@ private:
     ekf_pose.x = ekf_.get_x();
     ekf_pose.y = ekf_.get_y();
     double ekf_theta = ekf_.get_theta();
-    // log x, y, and theta
-    // RCLCPP_INFO(this->get_logger(), "x, y, theta: %f, %f, %f", ekf_pose.x, ekf_pose.y, ekf_theta);
     turtlelib::Transform2D T_map_body(ekf_pose, ekf_theta);
     turtlelib::Vector2D odom_pose;
     odom_pose.x = x_;
