@@ -353,8 +353,6 @@ private:
     ekf_pose.x = ekf_.get_x();
     ekf_pose.y = ekf_.get_y();
     double ekf_theta = ekf_.get_theta();
-    // log x, y, and theta
-    // RCLCPP_INFO(this->get_logger(), "x, y, theta: %f, %f, %f", ekf_pose.x, ekf_pose.y, ekf_theta);
     turtlelib::Transform2D T_map_body(ekf_pose, ekf_theta);
     turtlelib::Vector2D odom_pose;
     odom_pose.x = x_;
