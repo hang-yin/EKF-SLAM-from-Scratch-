@@ -73,6 +73,21 @@ public:
     wheel_velocities = turtlelib::WheelVelocities();
     wheel_velocities.left = 0.0;
     wheel_velocities.right = 0.0;
+
+    // Create timer at frequency of rate
+    rate_ = 200.0;
+    timer_ = create_wall_timer(1s / rate_, std::bind(&TurtleControl::timer_callback, this));
+
+    joint_state_msg_.name = {"/red/wheel_left_link", "/red/wheel_right_link"};
+    joint_state_msg_.position = {0.0, 0.0};
+    joint_state_msg_.velocity = {0.0, 0.0};
+
+    wheel_commands_msg_.left_velocity = 0;
+    wheel_commands_msg_.right_velocity = 0;
+
+    twist_.w = 0.0;
+    twist_.x = 0.0;
+    twist_.y = 0.0;
   }
 
 private:
@@ -89,6 +104,7 @@ private:
   double motor_cmd_per_rad_sec_;
   double encoder_ticks_per_rad_;
   double collision_radius_;
+  double rate_;
 
 // Declare a diff_drive instance
   turtlelib::DiffDrive diff_drive;
@@ -96,53 +112,62 @@ private:
 // Declare other variables that need to be stored
   turtlelib::WheelVelocities wheel_velocities;
 
+// Create a JointState message
+  sensor_msgs::msg::JointState joint_state_msg_;
+  
+// Create a WheelCommands message
+  nuturtlebot_msgs::msg::WheelCommands wheel_commands_msg_;
+
+// Create a Twist
+  turtlelib::Twist2D twist_;
+
+// Initialize timer
+  rclcpp::TimerBase::SharedPtr timer_;
+
 // Implement the callback functions
   void sensor_data_callback(const nuturtlebot_msgs::msg::SensorData::SharedPtr msg)
   {
-    // Create a JointState message
-    sensor_msgs::msg::JointState joint_state_msg;
-    // Set the header
-    joint_state_msg.header.stamp = this->now();
-    // Set the name of the joints
-    joint_state_msg.name = {"/red/wheel_left_link", "/red/wheel_right_link"};
     // Set the position of the joints
-    joint_state_msg.position = {static_cast<double>(msg->left_encoder * encoder_ticks_per_rad_),
+    joint_state_msg_.position = {static_cast<double>(msg->left_encoder * encoder_ticks_per_rad_),
       static_cast<double>(msg->right_encoder * encoder_ticks_per_rad_)};
     // Set the velocity of the joints
-    joint_state_msg.velocity = {wheel_velocities.left, wheel_velocities.right};
-    joint_states_pub_->publish(joint_state_msg);
+    joint_state_msg_.velocity = {wheel_velocities.left, wheel_velocities.right};
   }
 
   void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg)
-  {
-    // Create a WheelCommands message
-    nuturtlebot_msgs::msg::WheelCommands wheel_commands_msg;
-    // Initialize twist
-    turtlelib::Twist2D twist;
+  {    
     // Set the linear and angular velocity
-    twist.w = msg->angular.z;
-    twist.x = msg->linear.x;
-    twist.y = msg->linear.y;
+    twist_.w = msg->angular.z;
+    twist_.x = msg->linear.x;
+    twist_.y = msg->linear.y;
+    
     // Calculate inverse kinematics
-    wheel_velocities = diff_drive.inverseKinematics(twist);
+    wheel_velocities = diff_drive.inverseKinematics(twist_);
     // Set the left and right wheel velocities
-    wheel_commands_msg.left_velocity =
+    wheel_commands_msg_.left_velocity =
       static_cast<int>(wheel_velocities.left / motor_cmd_per_rad_sec_);
-    wheel_commands_msg.right_velocity =
+    wheel_commands_msg_.right_velocity =
       static_cast<int>(wheel_velocities.right / motor_cmd_per_rad_sec_);
     // Limit wheel commands to -256 - 256
-    if (wheel_commands_msg.left_velocity > motor_cmd_max_) {
-      wheel_commands_msg.left_velocity = motor_cmd_max_;
-    } else if (wheel_commands_msg.left_velocity < -motor_cmd_max_) {
-      wheel_commands_msg.left_velocity = -motor_cmd_max_;
+    if (wheel_commands_msg_.left_velocity > motor_cmd_max_) {
+      wheel_commands_msg_.left_velocity = motor_cmd_max_;
+    } else if (wheel_commands_msg_.left_velocity < -motor_cmd_max_) {
+      wheel_commands_msg_.left_velocity = -motor_cmd_max_;
     }
-    if (wheel_commands_msg.right_velocity > motor_cmd_max_) {
-      wheel_commands_msg.right_velocity = motor_cmd_max_;
-    } else if (wheel_commands_msg.right_velocity < -motor_cmd_max_) {
-      wheel_commands_msg.right_velocity = -motor_cmd_max_;
+    if (wheel_commands_msg_.right_velocity > motor_cmd_max_) {
+      wheel_commands_msg_.right_velocity = motor_cmd_max_;
+    } else if (wheel_commands_msg_.right_velocity < -motor_cmd_max_) {
+      wheel_commands_msg_.right_velocity = -motor_cmd_max_;
     }
-    // Publish the message
-    wheel_commands_pub_->publish(wheel_commands_msg);
+  }
+
+  void timer_callback()
+  {
+    // Publish joint state message
+    joint_state_msg_.header.stamp = this->now();
+    joint_states_pub_->publish(joint_state_msg_);
+    // Publish wheel commands message
+    wheel_commands_pub_->publish(wheel_commands_msg_);
   }
 };
 

@@ -350,11 +350,19 @@ private:
       broadcaster_->sendTransform(transformStamped_);
 
       // Publish sensor data
+      /*
       int left_encoder =
         static_cast<int>((left_wheel_position_ + left_wheel_velocity_ / rate_) /
         encoder_ticks_per_rad_) % 4096;                                                                                                       // 12-bit encoder
       int right_encoder =
         static_cast<int>((right_wheel_position_ + left_wheel_velocity_ / rate_) /
+        encoder_ticks_per_rad_) % 4096;
+      */
+      int left_encoder =
+        static_cast<int>(left_wheel_position_ /
+        encoder_ticks_per_rad_) % 4096;                                                                                            // 12-bit encoder
+      int right_encoder =
+        static_cast<int>(right_wheel_position_ /
         encoder_ticks_per_rad_) % 4096;
       nuturtlebot_msgs::msg::SensorData sensor_data;
       sensor_data.left_encoder = left_encoder;

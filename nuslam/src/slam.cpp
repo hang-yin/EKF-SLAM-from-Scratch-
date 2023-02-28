@@ -248,6 +248,7 @@ private:
     turtlelib::WheelAngles new_wheel_angles;
     new_wheel_angles.left = left_wheel_pos_ + left_wheel_vel_ / rate_;
     new_wheel_angles.right = right_wheel_pos_ + right_wheel_vel_ / rate_;
+    
 
     // Update x, y, theta through forward kinematics
     turtlelib::RobotState robot_state = diff_drive_.forwardKinematics(new_wheel_angles);
