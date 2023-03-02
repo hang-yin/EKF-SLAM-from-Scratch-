@@ -248,7 +248,7 @@ private:
     turtlelib::WheelAngles new_wheel_angles;
     new_wheel_angles.left = left_wheel_pos_ + left_wheel_vel_ / rate_;
     new_wheel_angles.right = right_wheel_pos_ + right_wheel_vel_ / rate_;
-    
+
 
     // Update x, y, theta through forward kinematics
     turtlelib::RobotState robot_state = diff_drive_.forwardKinematics(new_wheel_angles);
@@ -300,8 +300,6 @@ private:
       slam_marker_msg.ns = "slam_obstacles";
       slam_marker_msg.id = i;
       slam_marker_msg.type = visualization_msgs::msg::Marker::CYLINDER;
-      double x = slam_obstacles_[i].first - ekf_.get_x();
-      double y = slam_obstacles_[i].second - ekf_.get_y();
       slam_marker_msg.action = visualization_msgs::msg::Marker::ADD;
 
       slam_marker_msg.pose.position.x = slam_obstacles_[i].first;

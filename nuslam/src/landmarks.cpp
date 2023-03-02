@@ -20,7 +20,7 @@ class LandmarksNode : public rclcpp::Node
 {
 public:
   SLAMnode()
-  : Node("landmarks")
+    : Node("landmarks")
   {
     // Declare parameters
     declare_parameter("min_lidar_range", 0.12);
@@ -31,12 +31,15 @@ public:
     lidar_angle_increment_ = get_parameter("angle_increment").as_double();
 
     // Initialize publishers, subscribers, and timers
-    scan_sub_ = this->create_subscription<sensor_msgs::msg::LaserScan>("/scan",
-                                                                       10,
-                                                                       std::bind(&LandmarksNode::scan_callback,
-                                                                                 this,
-                                                                                 std::placeholders::_1));
-    landmark_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("/fitted_landmarks", 10);
+    scan_sub_ = this->create_subscription<sensor_msgs::msg::LaserScan>(
+      "/scan",
+      10,
+      std::bind(
+        &LandmarksNode::scan_callback,
+        this,
+        std::placeholders::_1));
+    landmark_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>(
+      "/fitted_landmarks", 10);
     /*
     auto rate = 5.0;
     main_timer_ = this->create_wall_timer(1s/rate, std::bind(&LandmarksNode::main_timer_callback, this));
@@ -58,8 +61,7 @@ private:
     // Get the scan data
     std::vector<double> ranges = msg->ranges;
     std::vector<double> angles;
-    for (int i = 0; i < ranges.size(); i++)
-    {
+    for (int i = 0; i < ranges.size(); i++) {
       angles.push_back(msg->angle_min + i * msg->angle_increment);
     }
 
@@ -68,8 +70,7 @@ private:
 
     // Publish the landmarks
     visualization_msgs::msg::MarkerArray marker_array;
-    for (int i = 0; i < landmarks.size(); i++)
-    {
+    for (int i = 0; i < landmarks.size(); i++) {
       visualization_msgs::msg::Marker marker;
       marker.header.frame_id = "red/base_scan";
       marker.header.stamp = msg->header.stamp;
@@ -95,7 +96,7 @@ private:
     }
     landmark_pub_->publish(marker_array);
   }
-  
+
 };
 
 int main(int argc, char * argv[])

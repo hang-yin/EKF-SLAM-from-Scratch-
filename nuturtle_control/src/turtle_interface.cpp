@@ -114,7 +114,7 @@ private:
 
 // Create a JointState message
   sensor_msgs::msg::JointState joint_state_msg_;
-  
+
 // Create a WheelCommands message
   nuturtlebot_msgs::msg::WheelCommands wheel_commands_msg_;
 
@@ -135,12 +135,12 @@ private:
   }
 
   void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg)
-  {    
+  {
     // Set the linear and angular velocity
     twist_.w = msg->angular.z;
     twist_.x = msg->linear.x;
     twist_.y = msg->linear.y;
-    
+
     // Calculate inverse kinematics
     wheel_velocities = diff_drive.inverseKinematics(twist_);
     // Set the left and right wheel velocities
