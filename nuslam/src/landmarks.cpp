@@ -125,7 +125,7 @@ private:
           double curr_x = ranges[i] * cos(angles[i]);
           double curr_y = ranges[i] * sin(angles[i]);
           double dist = sqrt(pow(curr_x - prev_x, 2) + pow(curr_y - prev_y, 2));
-          RCLCPP_INFO(this->get_logger(), "dist: %f", dist);
+          // RCLCPP_INFO(this->get_logger(), "dist: %f", dist);
           if (dist < threshold) {
             curr_cluster.push_back(ranges[i]);
             curr_cluster.push_back(angles[i]);
@@ -163,7 +163,6 @@ private:
       clusters.push_back(combined_cluster);
     }
 
-    RCLCPP_INFO(this->get_logger(), "2Number of clusters: %d", int(clusters.size()));
     // discard clusters that have less than 3 points
     for (int i = 0; i < int(clusters.size()); i++) {
       if (clusters[i].size() < 6) {
@@ -173,9 +172,9 @@ private:
     }
 
 
-    // publish all clusters
+    // publish all clusters for TESTING
+    /*
     visualization_msgs::msg::MarkerArray marker_array;
-    RCLCPP_INFO(this->get_logger(), "3Number of clusters: %d", int(clusters.size()));
     for (int i = 0; i < int(clusters.size()); i++) {
       visualization_msgs::msg::Marker marker;
       marker.header.frame_id = "red/base_scan";
@@ -208,6 +207,56 @@ private:
       marker_array.markers.push_back(marker);
     }
     clusters_pub_->publish(marker_array);
+    */
+
+    // Step2: implement circle fitting algorithm to detect circles
+    for (int i = 0; i < int(clusters.size()); i++){
+      // Step2.0: convert cluster points to cartesian coordinates
+      std::vector<double> cluster_x;
+      std::vector<double> cluster_y;
+      for (int j = 0; j < int(clusters[i].size()); j += 2) {
+        x.push_back(clusters[i][j] * cos(clusters[i][j + 1]));
+        y.push_back(clusters[i][j] * sin(clusters[i][j + 1]));
+      }
+      // Step2.1: calculate centroid
+      double centroid_x = mean(cluster_x);
+      double centroid_y = mean(cluster_y);
+      // Step2.2: shift coordinates so that centroid is at origin
+      for (int j = 0; j < int(cluster_x.size()); j++) {
+        cluster_x[j] -= centroid_x;
+        cluster_y[j] -= centroid_y;
+      }
+      // Step2.3: calculate z
+      std::vector<double> z;
+      for (int j = 0; j < int(cluster_x.size()); j++) {
+        z.push_back(pow(cluster_x[j], 2) + pow(cluster_y[j], 2));
+      }
+      // Step2.4: calculate mean of z
+      double mean_z = mean(z);
+      // Step2.5: calculate the data matrix Z
+      arma::vec all_ones = arma::ones<arma::vec>(cluster_x.size());
+      arma::mat Z = arma::join_rows(z, cluster_x, cluster_y, all_ones);
+      // Step2.6: calculate moment matrix M
+      arma::mat M = (1/(cluster_x.size()))*(Z.t()) * (Z);
+      // Step2.7: form the constraint matrix
+      arma::mat H = arma::zeros<arma::mat>(4, 4);
+      H(0, 0) = 8.0*mean_z;
+      H(1, 1) = 1;
+      H(2, 2) = 1;
+      H(0, 3) = 2;
+      H(3, 0) = 2;
+      // Step2.8: computer inverse of H
+      arma::mat H_inv = arma::zeros<arma::mat>(4, 4);
+      H_inv(1, 1) = 1;
+      H_inv(2, 2) = 1;
+      H_inv(3, 3) = -2.0*(mean_z);
+      H_inv(0, 3) = 1.0/2.0;
+      H_inv(3, 0) = 1.0/2.0;
+      // Step2.9: compute the singular value decomposition of Z
+      arma::mat U;
+      arma::vec s;
+      arma::mat V;
+    }
 
 
     // return empty list of landmarks
