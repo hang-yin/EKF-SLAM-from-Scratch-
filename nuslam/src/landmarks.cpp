@@ -13,6 +13,7 @@
 #include "sensor_msgs/msg/laser_scan.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
 #include <armadillo>
+#include <cmath>
 
 using namespace std::chrono_literals;
 
@@ -210,17 +211,20 @@ private:
     */
 
     // Step2: implement circle fitting algorithm to detect circles
+    std::vector<std::vector<double>> circles;
     for (int i = 0; i < int(clusters.size()); i++){
       // Step2.0: convert cluster points to cartesian coordinates
       std::vector<double> cluster_x;
       std::vector<double> cluster_y;
       for (int j = 0; j < int(clusters[i].size()); j += 2) {
-        x.push_back(clusters[i][j] * cos(clusters[i][j + 1]));
-        y.push_back(clusters[i][j] * sin(clusters[i][j + 1]));
+        cluster_x.push_back(clusters[i][j] * cos(clusters[i][j + 1]));
+        cluster_y.push_back(clusters[i][j] * sin(clusters[i][j + 1]));
       }
       // Step2.1: calculate centroid
-      double centroid_x = mean(cluster_x);
-      double centroid_y = mean(cluster_y);
+      double x_sum = std::accumulate(std::begin(cluster_x), std::end(cluster_x), 0.0);
+      double centroid_x =  x_sum / cluster_x.size();
+      double y_sum = std::accumulate(std::begin(cluster_y), std::end(cluster_y), 0.0);
+      double centroid_y =  y_sum / cluster_y.size();
       // Step2.2: shift coordinates so that centroid is at origin
       for (int j = 0; j < int(cluster_x.size()); j++) {
         cluster_x[j] -= centroid_x;
@@ -232,10 +236,16 @@ private:
         z.push_back(pow(cluster_x[j], 2) + pow(cluster_y[j], 2));
       }
       // Step2.4: calculate mean of z
-      double mean_z = mean(z);
+      double z_sum = std::accumulate(std::begin(z), std::end(z), 0.0);
+      double mean_z =  z_sum / z.size();
       // Step2.5: calculate the data matrix Z
       arma::vec all_ones = arma::ones<arma::vec>(cluster_x.size());
-      arma::mat Z = arma::join_rows(z, cluster_x, cluster_y, all_ones);
+      arma::vec z_arma(z.data(), z.size());
+      arma::vec cluster_x_arma(cluster_x.data(), cluster_x.size());
+      arma::vec cluster_y_arma(cluster_y.data(), cluster_y.size());
+      arma::mat Z0 = arma::join_rows(z_arma, cluster_x_arma);
+      arma::mat Z1 = arma::join_rows(cluster_y_arma, all_ones);
+      arma::mat Z = arma::join_rows(Z0, Z1);
       // Step2.6: calculate moment matrix M
       arma::mat M = (1/(cluster_x.size()))*(Z.t()) * (Z);
       // Step2.7: form the constraint matrix
@@ -254,10 +264,53 @@ private:
       H_inv(3, 0) = 1.0/2.0;
       // Step2.9: compute the singular value decomposition of Z
       arma::mat U;
-      arma::vec s;
+      arma::vec sigma;
       arma::mat V;
+      arma::svd(U, sigma, V, Z);
+      // Step2.10: check if the last singular value is small
+      arma::vec A;
+      if (sigma.back() < pow(10, -12)){
+        A = V.col(3);
+      }
+      // Step2.11: the second case for A
+      else{
+        arma::mat sigma_mat = arma::diagmat(sigma);
+        arma::mat Y = V * sigma_mat * V.t();
+        arma::mat Q = Y * H_inv * Y;
+        arma::vec eigen_vec;
+        arma::mat eigen_mat;
+        arma::eig_sym(eigen_vec, eigen_mat, Q);
+        arma::vec A_s;
+        for (int j = 0; j < int(eigen_vec.size()); j++){
+          if (eigen_vec(j) > 0){
+            A_s = eigen_mat.col(j);
+            break;
+          }
+        }
+        A = arma::solve(Y, A_s);
+      }
+      // Step2.12: calculate the circle parameters
+      double a = (-A.at(1))/(2*A.at(0));
+      double b = (-A.at(2))/(2*A.at(0));
+      double r = sqrt((pow(A.at(1), 2) + pow(A.at(2), 2) - (4.0*A.at(0)*A.at(3)))/(4*pow(A.at(0), 2)));
+      // Step2.13: calculate the circle center
+      double center_x = a + centroid_x;
+      double center_y = b + centroid_y;
+      // lastly, push the circle parameters to the circles vector
+      if(r < 0.05 && r > 0.01){
+        std::vector<double> circle;
+        circle.push_back(center_x);
+        circle.push_back(center_y);
+        circle.push_back(r);
+        circles.push_back(circle);
+      }
     }
 
+    RCLCPP_INFO(this->get_logger(), "Number of circles detected: %d", int(circles.size()));
+    // log all circle information
+    for (int i = 0; i < int(circles.size()); i++){
+      RCLCPP_INFO(this->get_logger(), "Circle %d: center_x = %f, center_y = %f, radius = %f", i, circles[i][0], circles[i][1], circles[i][2]);
+    }
 
     // return empty list of landmarks
     std::vector<std::vector<double>> landmarks;
