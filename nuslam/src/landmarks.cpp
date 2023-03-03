@@ -220,6 +220,10 @@ private:
         cluster_x.push_back(clusters[i][j] * cos(clusters[i][j + 1]));
         cluster_y.push_back(clusters[i][j] * sin(clusters[i][j + 1]));
       }
+      // experiment with a check condition
+      if (cluster_x.size() < 4) {
+        continue;
+      }
       // Step2.1: calculate centroid
       double x_sum = std::accumulate(std::begin(cluster_x), std::end(cluster_x), 0.0);
       double centroid_x =  x_sum / cluster_x.size();
@@ -248,6 +252,7 @@ private:
       arma::mat Z = arma::join_rows(Z0, Z1);
       // Step2.6: calculate moment matrix M
       arma::mat M = (1/(cluster_x.size()))*(Z.t()) * (Z);
+      
       // Step2.7: form the constraint matrix
       arma::mat H = arma::zeros<arma::mat>(4, 4);
       H(0, 0) = 8.0*mean_z;
@@ -267,6 +272,7 @@ private:
       arma::vec sigma;
       arma::mat V;
       arma::svd(U, sigma, V, Z);
+      
       // Step2.10: check if the last singular value is small
       arma::vec A;
       if (sigma.back() < pow(10, -12)){
@@ -275,8 +281,9 @@ private:
       // Step2.11: the second case for A
       else{
         arma::mat sigma_mat = arma::diagmat(sigma);
-        arma::mat Y = V * sigma_mat * V.t();
+        arma::mat Y = V * sigma_mat * V.t(); // matrix multiplication: incompatible matrix dimensions 4x4 and 3x3 when there are only 2 circles
         arma::mat Q = Y * H_inv * Y;
+        
         arma::vec eigen_vec;
         arma::mat eigen_mat;
         arma::eig_sym(eigen_vec, eigen_mat, Q);
@@ -289,6 +296,7 @@ private:
         }
         A = arma::solve(Y, A_s);
       }
+
       // Step2.12: calculate the circle parameters
       double a = (-A.at(1))/(2*A.at(0));
       double b = (-A.at(2))/(2*A.at(0));
@@ -296,8 +304,34 @@ private:
       // Step2.13: calculate the circle center
       double center_x = a + centroid_x;
       double center_y = b + centroid_y;
+
+      // Step3: circle classification, helps to avoid false positives
+      double p1_x = cluster_x.at(0);
+      double p1_y = cluster_y.at(0);
+      double p2_x = cluster_x.at(int(cluster_x.size())-1);
+      double p2_y = cluster_y.at(int(cluster_y.size())-1);
+      std::vector<double> angles;
+      for (int j = 1; j < int(cluster_x.size()-1); j++){
+        double p_x = cluster_x.at(j);
+        double p_y = cluster_y.at(j);
+        // angle is the angle between the line p1p and the line p2p
+        double dot_product = (p1_x-p_x)*(p2_x-p_x) + (p1_y-p_y)*(p2_y-p_y);
+        double magnitude1 = sqrt(pow(p1_x-p_x, 2) + pow(p1_y-p_y, 2));
+        double magnitude2 = sqrt(pow(p2_x-p_x, 2) + pow(p2_y-p_y, 2));
+        double angle = acos(dot_product/(magnitude1*magnitude2));
+        angles.push_back(angle);
+      }
+      // find mean and standard deviation of angles
+      double angle_sum = std::accumulate(std::begin(angles), std::end(angles), 0.0);
+      double mean_angle = angle_sum / angles.size();
+      // convert mean_angle from radians to degrees
+      double angle_degree = mean_angle * 180.0 / turtlelib::PI;
+      double sq_sum = std::inner_product(angles.begin(), angles.end(), angles.begin(), 0.0);
+      double stdev_angle = std::sqrt(sq_sum / angles.size() - mean_angle * mean_angle);
+      // RCLCPP_INFO(this->get_logger(), "Mean angle: %f, Standard deviation: %f", angle_degree, stdev_angle);
+
       // lastly, push the circle parameters to the circles vector
-      if(r < 0.05 && r > 0.01){
+      if(r < 0.05 && r > 0.01 && stdev_angle < 0.1 && angle_degree > 90 && angle_degree < 160){
         std::vector<double> circle;
         circle.push_back(center_x);
         circle.push_back(center_y);
