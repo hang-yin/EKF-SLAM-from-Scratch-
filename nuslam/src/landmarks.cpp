@@ -79,7 +79,7 @@ private:
     visualization_msgs::msg::MarkerArray marker_array;
     for (int i = 0; i < int(landmarks.size()); i++) {
       visualization_msgs::msg::Marker marker;
-      marker.header.frame_id = "red/base_scan";
+      marker.header.frame_id = "red/base_link";
       marker.header.stamp = msg->header.stamp;
       marker.ns = "landmarks";
       marker.id = i;
@@ -92,9 +92,9 @@ private:
       marker.pose.orientation.y = 0.0;
       marker.pose.orientation.z = 0.0;
       marker.pose.orientation.w = 1.0;
-      marker.scale.x = 0.1;
-      marker.scale.y = 0.1;
-      marker.scale.z = 0.1;
+      marker.scale.x = 0.038*2.0;
+      marker.scale.y = 0.038*2.0;
+      marker.scale.z = 0.25;
       marker.color.a = 1.0;
       marker.color.r = 1.0;
       marker.color.g = 0.0;
@@ -340,14 +340,18 @@ private:
       }
     }
 
-    RCLCPP_INFO(this->get_logger(), "Number of circles detected: %d", int(circles.size()));
-    // log all circle information
+    // push all circles to landmarks vector
+    std::vector<std::vector<double>> landmarks;
+
+    // push all circles to landmarks vector
     for (int i = 0; i < int(circles.size()); i++){
       RCLCPP_INFO(this->get_logger(), "Circle %d: center_x = %f, center_y = %f, radius = %f", i, circles[i][0], circles[i][1], circles[i][2]);
+      std::vector<double> landmark;
+      landmark.push_back(circles[i][0]);
+      landmark.push_back(circles[i][1]);
+      landmark.push_back(circles[i][2]);
+      landmarks.push_back(landmark);
     }
-
-    // return empty list of landmarks
-    std::vector<std::vector<double>> landmarks;
     return landmarks;
   }
 
