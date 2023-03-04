@@ -23,6 +23,7 @@ find_package(Armadillo)
 
 add_executable(slam src/slam.cpp)
 add_executable(landmarks src/landmarks.cpp)
+add_executable(uda_slam src/uda_slam.cpp)
 
 ament_target_dependencies(slam
   rclcpp
@@ -54,11 +55,29 @@ ament_target_dependencies(landmarks
   visualization_msgs
 )
 
+ament_target_dependencies(uda_slam
+  rclcpp
+  rclcpp_components
+  sensor_msgs
+  std_msgs
+  std_srvs
+  nuturtlebot_msgs
+  geometry_msgs
+  tf2
+  tf2_ros
+  nav_msgs
+  turtlelib
+  visualization_msgs
+)
+
 target_link_libraries(slam turtlelib::turtlelib)
 target_link_libraries(slam ${ARMADILLO_LIBRARIES})
 
 target_link_libraries(landmarks turtlelib::turtlelib)
 target_link_libraries(landmarks ${ARMADILLO_LIBRARIES})
+
+target_link_libraries(uda_slam turtlelib::turtlelib)
+target_link_libraries(uda_slam ${ARMADILLO_LIBRARIES})
 
 install(TARGETS
   slam
@@ -67,6 +86,11 @@ install(TARGETS
 
 install(TARGETS
   landmarks
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(TARGETS
+  uda_slam
   DESTINATION lib/${PROJECT_NAME}
 )
 
