@@ -380,7 +380,7 @@ private:
         bool found = false;
         for (int j = 0; j < int(circles_heartbeats_.size()); j++){
           double distance = sqrt(pow(circles[i][0] - circles_heartbeats_[j].first[0], 2) + pow(circles[i][1] - circles_heartbeats_[j].first[1], 2));
-          RCLCPP_INFO(this->get_logger(), "Distance: %f", distance);
+          // RCLCPP_INFO(this->get_logger(), "Distance: %f", distance);
           if (distance < 0.3){
             found = true;
             circles_heartbeats_[j].first = circles[i];

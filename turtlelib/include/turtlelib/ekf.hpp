@@ -32,6 +32,10 @@ namespace turtlelib{
 
         std::vector<std::pair<double, double>> get_obstacles();
         arma::vec get_obstacles_1();
+
+        void add_landmark(int obstacle_id, double obstacle_x, double obstacle_y);
+
+        std::vector<double> get_euclidean_distances(double obstacle_x, double obstacle_y);
     
     private:
         int max_landmarks;

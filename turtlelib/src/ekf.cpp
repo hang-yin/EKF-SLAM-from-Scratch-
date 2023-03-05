@@ -64,6 +64,35 @@ namespace turtlelib{
         this->state_vec_prev = arma::join_cols(temp, obstacles_arma);
     }
 
+    void EKF::add_landmark(int obstacle_id, double obstacle_x, double obstacle_y){
+        this->state_vec_prev.at(3 + 2 * obstacle_id) = obstacle_x;
+        this->state_vec_prev.at(3 + 2 * obstacle_id + 1) = obstacle_y;
+    }
+
+    std::vector<double> EKF::get_euclidean_distances(double obstacle_x, double obstacle_y){
+        std::vector<double> euclidean_distances;
+        for (int i = 0; i < this->max_landmarks; i++){
+            if (this->state_vec_prev.at(3 + 2 * i) == 0.0 && this->state_vec_prev.at(3 + 2 * i + 1) == 0.0){
+                continue;
+            }
+
+            double rad = std::sqrt(std::pow(obstacle_x, 2) + std::pow(obstacle_y, 2));
+            double angle = std::atan2(obstacle_y, obstacle_x);
+            angle = turtlelib::normalize_angle(angle);
+
+            double obstacle_x_tf = this->state_vec_prev.at(1) + rad * std::cos(this->state_vec_prev.at(0) + angle);
+            double obstacle_y_tf = this->state_vec_prev.at(2) + rad * std::sin(this->state_vec_prev.at(0) + angle);
+
+            double distance = std::sqrt(std::pow(obstacle_x_tf - this->state_vec_prev.at(3 + 2 * i), 2) + std::pow(obstacle_y_tf - this->state_vec_prev.at(3 + 2 * i + 1), 2));
+
+            //double x_diff = obstacle_x - this->state_vec_prev.at(3 + 2 * i);
+            //double y_diff = obstacle_y - this->state_vec_prev.at(3 + 2 * i + 1);
+            //double distance = std::sqrt(std::pow(x_diff, 2) + std::pow(y_diff, 2));
+            euclidean_distances.push_back(distance);
+        }
+        return euclidean_distances;
+    }
+
     void EKF::update_obstacles(std::vector<std::pair<double, double>> obstacles){
         // for each obstacle, check if it is close to any current obstacle
         // if so, continue
