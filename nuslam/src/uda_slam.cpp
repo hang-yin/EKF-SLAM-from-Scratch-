@@ -159,7 +159,9 @@ public:
     ekf_obstacles_set_ = true;
 
     // Initialize ekf object with 3 obstacles for now
-    ekf_.set_max_landmarks(3);
+    ekf_.set_max_landmarks(10);
+
+    num_of_detected_landmarks_ = 0;
   }
 
 private:
@@ -169,6 +171,7 @@ private:
   std::string world_id_;
   std::string wheel_left_;
   std::string wheel_right_;
+  int num_of_detected_landmarks_;
   double x_;
   double y_;
   double theta_;
@@ -262,41 +265,66 @@ private:
 // Callback function for fitted landmarks
   void fitted_landmarks_callback(const visualization_msgs::msg::MarkerArray::SharedPtr msg)
   {
-    // Check if fake sensor message is valid
+    // Check if message is valid
     if (msg->markers.size() == 0) {
       return;
     }
+
+    int marker_idx = 0;
+
     // Extract x and y values from marker array
-    bool update = false;
-    std::vector<std::pair<double, double>> fake_sensor_obstacles;
+    std::vector<std::pair<double, double>> fitted_obstacles;
     for (int i = 0; i < int(msg->markers.size()); i++) {
       double x = msg->markers[i].pose.position.x;
       double y = msg->markers[i].pose.position.y;
-      fake_sensor_obstacles.push_back(std::make_pair(x, y));
-      if (ekf_.has_new_obstacle(x, y)) {
-        update = true;
+      fitted_obstacles.push_back(std::make_pair(x, y));
+    }
+
+    for (int i = 0; i < int(fitted_obstacles.size()); i++) {
+      // if this is the first detected landmark, simply add it
+      if (num_of_detected_landmarks_ == 0){
+        ekf_.add_landmark(num_of_detected_landmarks_, fitted_obstacles[i].first, fitted_obstacles[i].second);
+        num_of_detected_landmarks_ += 1;
+      }else{
+        // check if this is a new landmark
+        std::vector<double> euclidean_distances = ekf_.get_euclidean_distances(fitted_obstacles[i].first, fitted_obstacles[i].second);
+        // log euclidean distance in a loop
+        /*
+        for (int j = 0; j < int(euclidean_distances.size()); j++){
+          RCLCPP_INFO(this->get_logger(), "euclidean_distances: %f", euclidean_distances[j]);
+        }
+        */
+
+        // RCLCPP_INFO(this->get_logger(), "euclidean_distances: %f, %f, %f", euclidean_distances[0], euclidean_distances[1], euclidean_distances[2]);
+        
+        // find idx of the minimum distance
+        // RCLCPP_INFO(this->get_logger(), "I'm here 1");
+        int min_idx = std::min_element(euclidean_distances.begin(), euclidean_distances.end()) - euclidean_distances.begin();
+        // find minimum distance
+        double min_distance = euclidean_distances.at(min_idx);
+        // RCLCPP_INFO(this->get_logger(), "I'm here 2");
+
+        // RCLCPP_INFO(this->get_logger(), "min_distance: %f", min_distance);
+
+        if (min_distance <= 0.5){
+          marker_idx = min_idx;
+        } else if (min_distance > 0.5){
+          ekf_.add_landmark(num_of_detected_landmarks_, fitted_obstacles[i].first, fitted_obstacles[i].second);
+          // marker_idx = num_of_detected_landmarks_;
+          num_of_detected_landmarks_ += 1;
+          continue;
+        } else {
+          continue;
+        }
+
+        ekf_.predict(twist_);
+        // ekf_.correct(i, fitted_obstacles[i].first, fitted_obstacles[i].second);
+        ekf_.correct(marker_idx, fitted_obstacles[i].first, fitted_obstacles[i].second);
       }
-    }
-    RCLCPP_INFO(this->get_logger(), "update: %d", update);
-    if (update) {
-      ekf_.update_obstacles(fake_sensor_obstacles);
-    }
-
-    /*
-    // Set ekf obstacles
-    if (ekf_obstacles_set_) {
-      ekf_.set_obstacles(fake_sensor_obstacles);
-      ekf_obstacles_set_ = false;
-    }
-    */
-
-    for (int i = 0; i < int(fake_sensor_obstacles.size()); i++) {
-      ekf_.predict(twist_);
-      ekf_.correct(i, fake_sensor_obstacles[i].first, fake_sensor_obstacles[i].second);
     }
     slam_obstacles_ = ekf_.get_obstacles();
     arma::vec state_prev = ekf_.get_obstacles_1();
-    RCLCPP_INFO(this->get_logger(), "obstacles: %f, %f, %f, %f, %f, %f", state_prev(3), state_prev(4), state_prev(5), state_prev(6), state_prev(7), state_prev(8));
+    // RCLCPP_INFO(this->get_logger(), "obstacles: %f, %f, %f, %f, %f, %f", state_prev(3), state_prev(4), state_prev(5), state_prev(6), state_prev(7), state_prev(8));
   }
 
   void slam_marker_callback()
