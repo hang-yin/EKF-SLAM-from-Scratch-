@@ -306,7 +306,7 @@ private:
 
         // RCLCPP_INFO(this->get_logger(), "min_distance: %f", min_distance);
 
-        if (min_distance <= 0.5){
+        if (min_distance < 0.1){
           marker_idx = min_idx;
         } else if (min_distance > 0.5){
           ekf_.add_landmark(num_of_detected_landmarks_, fitted_obstacles[i].first, fitted_obstacles[i].second);
@@ -393,6 +393,7 @@ private:
     odom_blue_tf_.transform.rotation.z = q.z();
     odom_blue_tf_.transform.rotation.w = q.w();
     tf_broadcaster_->sendTransform(odom_blue_tf_);
+    RCLCPP_INFO(this->get_logger(), "odom blue pose: %f, %f", x_, y_);
 
     // Publish transform from map to odom
     turtlelib::Vector2D ekf_pose;
@@ -441,6 +442,7 @@ private:
     slam_pose_stamped_msg_.pose.position.y = ekf_.get_y();
     slam_path_msg_.poses.push_back(slam_pose_stamped_msg_);
     slam_path_pub_->publish(slam_path_msg_);
+    RCLCPP_INFO(this->get_logger(), "slam pose: %f, %f", ekf_.get_x(), ekf_.get_y());
   }
 };
 

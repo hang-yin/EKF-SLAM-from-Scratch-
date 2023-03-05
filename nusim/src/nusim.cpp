@@ -39,8 +39,8 @@ public:
     declare_parameter("encoder_ticks_per_rad", 0.00153398078);
     declare_parameter("motor_cmd_per_rad_sec", 0.024);
     declare_parameter("input_noise", 0.0);
-    declare_parameter("slip_fraction", 30.0);
-    declare_parameter("basic_sensor_variance", 0.0);
+    declare_parameter("slip_fraction", 50.0);
+    declare_parameter("basic_sensor_variance", 0.0005);
     declare_parameter("max_range", 10.0);
     declare_parameter("collision_radius", 0.11);
     declare_parameter("min_lidar_range", 0.12);
@@ -376,6 +376,7 @@ private:
       pose_stamped_msg_.pose.position.y = robot_state_.y;
       path_msg_.poses.push_back(pose_stamped_msg_);
       path_pub_->publish(path_msg_);
+      RCLCPP_INFO(this->get_logger(), "real pose: %f, %f", robot_state_.x, robot_state_.y);
 
       // Publish fake sensor data
       if (fake_sensor_ready_) {

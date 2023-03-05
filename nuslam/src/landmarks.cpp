@@ -409,7 +409,7 @@ private:
     std::vector<std::vector<double>> landmarks;
 
     // log number of circles
-    RCLCPP_INFO(this->get_logger(), "Number of circles: %d", int(circles.size()));
+    // RCLCPP_INFO(this->get_logger(), "Number of circles: %d", int(circles.size()));
 
     // push all circles in circles_hearbeat to landmarks vector
     for (int i = 0; i < int(circles_heartbeats_.size()); i++){
