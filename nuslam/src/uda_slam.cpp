@@ -16,11 +16,11 @@
 
 using namespace std::chrono_literals;
 
-class SLAMnode : public rclcpp::Node
+class UDASLAMnode : public rclcpp::Node
 {
 public:
-  SLAMnode()
-  : Node("slam")
+  UDASLAMnode()
+  : Node("uda_slam")
   {
     // Declare parameters
     declare_parameter("body_id", "blue/base_footprint");
@@ -62,15 +62,15 @@ public:
       "red/joint_states",
       10,
       std::bind(
-        &SLAMnode::joint_callback,
+        &UDASLAMnode::joint_callback,
         this,
         std::placeholders::_1));
     // Create subscriber for fake sensor
-    fake_sensor_sub_ = create_subscription<visualization_msgs::msg::MarkerArray>(
-      "/fake_sensor",
+    fitted_landmarks_sub_ = create_subscription<visualization_msgs::msg::MarkerArray>(
+      "/fitted_landmarks",
       10,
       std::bind(
-        &SLAMnode::fake_sensor_callback,
+        &UDASLAMnode::fitted_landmarks_callback,
         this,
         std::placeholders::_1));
 
@@ -84,9 +84,9 @@ public:
 
     // Create a timer to publish odometry
     rate_ = 200.0;
-    timer_ = create_wall_timer(1s / rate_, std::bind(&SLAMnode::timer_callback, this));
+    timer_ = create_wall_timer(1s / rate_, std::bind(&UDASLAMnode::timer_callback, this));
     slam_marker_timer_ =
-      create_wall_timer(1s / rate_, std::bind(&SLAMnode::slam_marker_callback, this));
+      create_wall_timer(1s / rate_, std::bind(&UDASLAMnode::slam_marker_callback, this));
 
     // Create a path publishers
     odom_path_pub_ = create_publisher<nav_msgs::msg::Path>("/blue/path", 10);
@@ -159,7 +159,7 @@ public:
     ekf_obstacles_set_ = true;
 
     // Initialize ekf object with 3 obstacles for now
-    ekf_.set_max_landmarks(5);
+    ekf_.set_max_landmarks(3);
   }
 
 private:
@@ -192,7 +192,7 @@ private:
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr slam_marker_pub_;
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_sub_;
-  rclcpp::Subscription<visualization_msgs::msg::MarkerArray>::SharedPtr fake_sensor_sub_;
+  rclcpp::Subscription<visualization_msgs::msg::MarkerArray>::SharedPtr fitted_landmarks_sub_;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr odom_path_pub_;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr slam_path_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
@@ -259,26 +259,36 @@ private:
     diff_drive_.setWheelAngles(wheel_angles);
   }
 
-// Callback function for fake sensor
-  void fake_sensor_callback(const visualization_msgs::msg::MarkerArray::SharedPtr msg)
+// Callback function for fitted landmarks
+  void fitted_landmarks_callback(const visualization_msgs::msg::MarkerArray::SharedPtr msg)
   {
     // Check if fake sensor message is valid
     if (msg->markers.size() == 0) {
       return;
     }
     // Extract x and y values from marker array
+    bool update = false;
     std::vector<std::pair<double, double>> fake_sensor_obstacles;
     for (int i = 0; i < int(msg->markers.size()); i++) {
       double x = msg->markers[i].pose.position.x;
       double y = msg->markers[i].pose.position.y;
       fake_sensor_obstacles.push_back(std::make_pair(x, y));
+      if (ekf_.has_new_obstacle(x, y)) {
+        update = true;
+      }
+    }
+    RCLCPP_INFO(this->get_logger(), "update: %d", update);
+    if (update) {
+      ekf_.update_obstacles(fake_sensor_obstacles);
     }
 
+    /*
     // Set ekf obstacles
     if (ekf_obstacles_set_) {
       ekf_.set_obstacles(fake_sensor_obstacles);
       ekf_obstacles_set_ = false;
     }
+    */
 
     for (int i = 0; i < int(fake_sensor_obstacles.size()); i++) {
       ekf_.predict(twist_);
@@ -286,14 +296,23 @@ private:
     }
     slam_obstacles_ = ekf_.get_obstacles();
     arma::vec state_prev = ekf_.get_obstacles_1();
+    RCLCPP_INFO(this->get_logger(), "obstacles: %f, %f, %f, %f, %f, %f", state_prev(3), state_prev(4), state_prev(5), state_prev(6), state_prev(7), state_prev(8));
   }
 
   void slam_marker_callback()
   {
-    // Clear slam marker array
-    slam_marker_array_msg_.markers.resize(slam_obstacles_.size());
-    // Create slam marker array
+    std::vector<std::pair<double, double>> valid_slam_obstacles;
     for (int i = 0; i < int(slam_obstacles_.size()); i++) {
+      double x = slam_obstacles_[i].first;
+      double y = slam_obstacles_[i].second;
+      if (!(abs(x)<0.01 && abs(y)<0.01)) {
+        valid_slam_obstacles.push_back(std::make_pair(x, y));
+      }
+    }
+    // Clear slam marker array
+    slam_marker_array_msg_.markers.resize(valid_slam_obstacles.size());
+    // Create slam marker array
+    for (int i = 0; i < int(valid_slam_obstacles.size()); i++) {
       visualization_msgs::msg::Marker slam_marker_msg;
       slam_marker_msg.header.frame_id = "map";
       slam_marker_msg.header.stamp = this->now();
@@ -302,8 +321,8 @@ private:
       slam_marker_msg.type = visualization_msgs::msg::Marker::CYLINDER;
       slam_marker_msg.action = visualization_msgs::msg::Marker::ADD;
 
-      slam_marker_msg.pose.position.x = slam_obstacles_[i].first;
-      slam_marker_msg.pose.position.y = slam_obstacles_[i].second;
+      slam_marker_msg.pose.position.x = valid_slam_obstacles[i].first;
+      slam_marker_msg.pose.position.y = valid_slam_obstacles[i].second;
       slam_marker_msg.pose.position.z = 0.125;
       slam_marker_msg.pose.orientation.x = 0.0;
       slam_marker_msg.pose.orientation.y = 0.0;
@@ -400,7 +419,7 @@ private:
 int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<SLAMnode>());
+  rclcpp::spin(std::make_shared<UDASLAMnode>());
   rclcpp::shutdown();
   return 0;
 }

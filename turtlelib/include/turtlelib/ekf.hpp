@@ -26,6 +26,10 @@ namespace turtlelib{
 
         void set_obstacles(std::vector<std::pair<double, double>> obstacles);
 
+        void update_obstacles(std::vector<std::pair<double, double>> obstacles);
+
+        bool has_new_obstacle(double x, double y);
+
         std::vector<std::pair<double, double>> get_obstacles();
         arma::vec get_obstacles_1();
     
@@ -39,6 +43,8 @@ namespace turtlelib{
         arma::mat sigma_mat_prev;
         RobotState state;
         arma::vec q;
+        arma::vec updated_obstacles;
+        std::vector<std::pair<double, double>> detected_obstacles;
 
     };
 

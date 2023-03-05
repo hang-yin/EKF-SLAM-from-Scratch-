@@ -26,6 +26,8 @@ namespace turtlelib{
         this->sigma_mat = this->sigma_mat_minus;
 
         this->state = {0.0,0.0,0.0};
+
+        this->updated_obstacles = arma::vec(2*this->max_landmarks, arma::fill::zeros);
     }
 
     double EKF::get_x(){
@@ -62,6 +64,52 @@ namespace turtlelib{
         this->state_vec_prev = arma::join_cols(temp, obstacles_arma);
     }
 
+    void EKF::update_obstacles(std::vector<std::pair<double, double>> obstacles){
+        // for each obstacle, check if it is close to any current obstacle
+        // if so, continue
+        // if not, add the new obstacle
+        int idx = 0;
+        for (int i = 0; i < int(obstacles.size()); i++){
+            double distance = std::sqrt(std::pow(obstacles.at(i).first, 2) + std::pow(obstacles.at(i).second, 2));
+            double angle = std::atan2(obstacles.at(i).second, obstacles.at(i).first);
+            double x = this->state_vec_prev.at(1)+distance*std::cos(state.theta+angle);
+            double y = this->state_vec_prev.at(2)+distance*std::sin(state.theta+angle);
+
+            std::vector<std::pair<double, double>> detected_obstacles_temp = this->detected_obstacles;
+
+            if (detected_obstacles_temp.size()==0){
+                this->detected_obstacles.push_back(std::make_pair(x, y));
+                this->updated_obstacles.at(idx) = x;
+                this->updated_obstacles.at(idx + 1) = y;
+                idx += 2;
+            }else{
+                bool new_obstacle = true;
+                for (int j = 0; j < int(detected_obstacles_temp.size()); j++){
+                    double x_diff = x - detected_obstacles_temp.at(j).first;
+                    double y_diff = y - detected_obstacles_temp.at(j).second;
+                    double distance = std::sqrt(std::pow(x_diff, 2) + std::pow(y_diff, 2));
+                    if (distance < 0.1){
+                        new_obstacle = false;
+                        break;
+                    }
+                }
+                if (new_obstacle){
+                    this->detected_obstacles.push_back(std::make_pair(x, y));
+                    this->updated_obstacles.at(idx) = x;
+                    this->updated_obstacles.at(idx + 1) = y;
+                    idx += 2;
+                }
+            }
+        }
+        arma::vec temp = arma::vec(3, arma::fill::zeros);
+        
+        temp.at(0) = this->state_vec_prev.at(0);
+        temp.at(1) = this->state_vec_prev.at(1);
+        temp.at(2) = this->state_vec_prev.at(2);
+        
+        this->state_vec_prev = arma::join_cols(temp, updated_obstacles);
+    }
+
     std::vector<std::pair<double, double>> EKF::get_obstacles(){
         // convert vector of doubles to a vector of pairs of doubles
         std::vector<std::pair<double, double>> obstacles;
@@ -72,6 +120,21 @@ namespace turtlelib{
             obstacles.push_back(obstacle);
         }
         return obstacles;
+    }
+
+    bool EKF::has_new_obstacle(double x, double y){
+        std::vector<std::pair<double, double>> prev_obstacles = this->get_obstacles();
+        double distance = std::sqrt(std::pow(x, 2) + std::pow(y, 2));
+        double angle = std::atan2(y, x);
+        double x_diff = this->state_vec_prev.at(1) + distance * std::cos(this->state_vec_prev.at(0) + angle);
+        double y_diff = this->state_vec_prev.at(2) + distance * std::sin(this->state_vec_prev.at(0) + angle);
+        for (int i = 0; i < int(prev_obstacles.size()); i++){
+            double obs_dist = std::sqrt(std::pow(x_diff - prev_obstacles.at(i).first, 2) + std::pow(y_diff - prev_obstacles.at(i).second, 2));
+            if (obs_dist < 0.1){
+                return false;
+            }
+        }
+        return true;
     }
 
     arma::vec EKF::get_obstacles_1(){
