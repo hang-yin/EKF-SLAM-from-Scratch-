@@ -159,7 +159,7 @@ public:
     ekf_obstacles_set_ = true;
 
     // Initialize ekf object with 3 obstacles for now
-    ekf_.set_max_landmarks(3);
+    ekf_.set_max_landmarks(5);
   }
 
 private:

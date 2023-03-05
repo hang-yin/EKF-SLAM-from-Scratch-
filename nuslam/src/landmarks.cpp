@@ -48,6 +48,7 @@ public:
     auto rate = 5.0;
     main_timer_ = this->create_wall_timer(1s/rate, std::bind(&LandmarksNode::main_timer_callback, this));
     */
+    initialize_heartbeat_ = true;
   }
 
 private:
@@ -59,6 +60,9 @@ private:
   rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr scan_sub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr landmark_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr clusters_pub_;
+
+  std::vector<std::pair<std::vector<double>, int>> circles_heartbeats_;
+  bool initialize_heartbeat_;
 
   // Declare functions
   void scan_callback(const sensor_msgs::msg::LaserScan::SharedPtr msg) // remember that laser scan is published at 5Hz in nusim!
@@ -94,8 +98,8 @@ private:
       marker.pose.orientation.y = 0.0;
       marker.pose.orientation.z = 0.0;
       marker.pose.orientation.w = 1.0;
-      marker.scale.x = 0.038 * 2.0;
-      marker.scale.y = 0.038 * 2.0;
+      marker.scale.x = landmarks[i][2] * 2.0;
+      marker.scale.y = landmarks[i][2] * 2.0;
       marker.scale.z = 0.25;
       marker.color.a = 1.0;
       marker.color.r = 1.0;
@@ -363,22 +367,55 @@ private:
       }
     }
 
+    if (initialize_heartbeat_){
+      initialize_heartbeat_ = false;
+      for (int i = 0; i < int(circles.size()); i++){
+        std::pair<std::vector<double>, int> heartbeat;
+        heartbeat.first = circles[i];
+        heartbeat.second = 0;
+        circles_heartbeats_.push_back(heartbeat);
+      }
+    }else{
+      for (int i = 0; i < int(circles.size()); i++){
+        bool found = false;
+        for (int j = 0; j < int(circles_heartbeats_.size()); j++){
+          double distance = sqrt(pow(circles[i][0] - circles_heartbeats_[j].first[0], 2) + pow(circles[i][1] - circles_heartbeats_[j].first[1], 2));
+          RCLCPP_INFO(this->get_logger(), "Distance: %f", distance);
+          if (distance < 0.3){
+            found = true;
+            circles_heartbeats_[j].first = circles[i];
+            circles_heartbeats_[j].second = 0;
+            break;
+          }
+        }
+        if (!found){
+          std::pair<std::vector<double>, int> heartbeat;
+          heartbeat.first = circles[i];
+          heartbeat.second = 0;
+          circles_heartbeats_.push_back(heartbeat);
+        }
+      }
+      for (int i = 0; i < int(circles_heartbeats_.size()); i++){
+        circles_heartbeats_[i].second++;
+      }
+      for (int i = 0; i < int(circles_heartbeats_.size()); i++){
+        if (circles_heartbeats_[i].second > 15){
+          circles_heartbeats_.erase(circles_heartbeats_.begin() + i);
+        }
+      }
+    }
+
     // push all circles to landmarks vector
     std::vector<std::vector<double>> landmarks;
 
     // log number of circles
     RCLCPP_INFO(this->get_logger(), "Number of circles: %d", int(circles.size()));
 
-    // push all circles to landmarks vector
-    for (int i = 0; i < int(circles.size()); i++)
-    {
-      // RCLCPP_INFO(this->get_logger(), "Circle %d: center_x = %f, center_y = %f, radius = %f", i, circles[i][0], circles[i][1], circles[i][2]);
-      std::vector<double> landmark;
-      landmark.push_back(circles[i][0]);
-      landmark.push_back(circles[i][1]);
-      landmark.push_back(circles[i][2]);
-      landmarks.push_back(landmark);
+    // push all circles in circles_hearbeat to landmarks vector
+    for (int i = 0; i < int(circles_heartbeats_.size()); i++){
+      landmarks.push_back(circles_heartbeats_[i].first);
     }
+
     return landmarks;
   }
 };

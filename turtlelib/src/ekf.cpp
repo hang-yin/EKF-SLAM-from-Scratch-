@@ -130,11 +130,11 @@ namespace turtlelib{
         double y_diff = this->state_vec_prev.at(2) + distance * std::sin(this->state_vec_prev.at(0) + angle);
         for (int i = 0; i < int(prev_obstacles.size()); i++){
             double obs_dist = std::sqrt(std::pow(x_diff - prev_obstacles.at(i).first, 2) + std::pow(y_diff - prev_obstacles.at(i).second, 2));
-            if (obs_dist > 0.1){
-                return true;
+            if (obs_dist < 0.1){
+                return false;
             }
         }
-        return false;
+        return true;
     }
 
     arma::vec EKF::get_obstacles_1(){

@@ -39,8 +39,8 @@ public:
     declare_parameter("encoder_ticks_per_rad", 0.00153398078);
     declare_parameter("motor_cmd_per_rad_sec", 0.024);
     declare_parameter("input_noise", 0.0);
-    declare_parameter("slip_fraction", 0.0);
-    declare_parameter("basic_sensor_variance", 0.001);
+    declare_parameter("slip_fraction", 30.0);
+    declare_parameter("basic_sensor_variance", 0.0);
     declare_parameter("max_range", 10.0);
     declare_parameter("collision_radius", 0.11);
     declare_parameter("min_lidar_range", 0.12);

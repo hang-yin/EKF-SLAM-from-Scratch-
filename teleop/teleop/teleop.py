@@ -117,8 +117,8 @@ class Teleop(Node):
         super().__init__('teleop_twist_keyboard')
         self.publisher_ = self.create_publisher(Twist, 'cmd_vel', 10)
         self.timer_ = self.create_timer(1.0/200.0, self.timer_callback)
-        self.speed = 0.12
-        self.turn = 1.0
+        self.speed = 0.08
+        self.turn = 0.3
         self.x = 0.0
         self.y = 0.0
         self.z = 0.0

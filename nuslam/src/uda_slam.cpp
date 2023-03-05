@@ -277,6 +277,7 @@ private:
         update = true;
       }
     }
+    RCLCPP_INFO(this->get_logger(), "update: %d", update);
     if (update) {
       ekf_.update_obstacles(fake_sensor_obstacles);
     }
