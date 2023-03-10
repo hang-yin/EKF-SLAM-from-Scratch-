@@ -1,5 +1,5 @@
 <launch>
-    <arg name="cmd_src" default="circle"/>
+    <arg name="cmd_src" default="teleop"/>
     <arg name="robot" default="nusim"/>
     <arg name="use_rviz" default="true"/>
 
@@ -10,7 +10,7 @@
     <!-- start the odometry and turtle_control nodes-->
     <!-- node pkg="nuturtle_control" exec="odometry" name="odometry_node"/-->
     <node pkg="nuslam" exec="uda_slam" name="uda_slam_node"/>
-    <node pkg="nuslam" exec="landmarks" name="landmarks_node"/>
+    <node pkg="nuslam" exec="landmarks_uda" name="landmarks_node"/>
     <node pkg="nuturtle_control" exec="turtle_control" name="turtle_control_node"/>
 
     <!-- argument cmd_src-->

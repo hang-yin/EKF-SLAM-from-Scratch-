@@ -4,6 +4,6 @@ nusim_node:
     x0: -0.6
     y0: 0.8
     theta0: 1.57
-    obstacles_x: [-0.4, 0.4, 0.3, -0.5, 0.8]
-    obstacles_y: [-0.6, -0.4, 0.4, 0.6, 1.0]
+    obstacles_x: [-0.3, 0.2, 0.2, -0.4, 0.8]
+    obstacles_y: [-0.4, -0.3, 0.3, 0.4, 1.0]
     obstacles_r: 0.038

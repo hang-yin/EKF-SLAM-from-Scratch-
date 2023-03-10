@@ -16,11 +16,11 @@
 
 using namespace std::chrono_literals;
 
-class UDASLAMnode : public rclcpp::Node
+class TURTLESLAMnode : public rclcpp::Node
 {
 public:
-  UDASLAMnode()
-  : Node("uda_slam")
+  TURTLESLAMnode()
+  : Node("turtlebot_slam")
   {
     // Declare parameters
     declare_parameter("body_id", "blue/base_footprint");
@@ -62,7 +62,7 @@ public:
       "red/joint_states",
       10,
       std::bind(
-        &UDASLAMnode::joint_callback,
+        &TURTLESLAMnode::joint_callback,
         this,
         std::placeholders::_1));
     // Create subscriber for fake sensor
@@ -70,7 +70,7 @@ public:
       "/fitted_landmarks",
       10,
       std::bind(
-        &UDASLAMnode::fitted_landmarks_callback,
+        &TURTLESLAMnode::fitted_landmarks_callback,
         this,
         std::placeholders::_1));
 
@@ -84,9 +84,9 @@ public:
 
     // Create a timer to publish odometry
     rate_ = 200.0;
-    timer_ = create_wall_timer(1s / rate_, std::bind(&UDASLAMnode::timer_callback, this));
+    timer_ = create_wall_timer(1s / rate_, std::bind(&TURTLESLAMnode::timer_callback, this));
     slam_marker_timer_ =
-      create_wall_timer(1s / rate_, std::bind(&UDASLAMnode::slam_marker_callback, this));
+      create_wall_timer(1s / rate_, std::bind(&TURTLESLAMnode::slam_marker_callback, this));
 
     // Create a path publishers
     odom_path_pub_ = create_publisher<nav_msgs::msg::Path>("/blue/path", 10);
@@ -254,6 +254,9 @@ private:
     turtlelib::WheelAngles new_wheel_angles;
     new_wheel_angles.left = left_wheel_pos_ + left_wheel_vel_ / rate_;
     new_wheel_angles.right = right_wheel_pos_ + right_wheel_vel_ / rate_;
+    //new_wheel_angles.left = left_wheel_pos_ + left_wheel_vel_ / 5.0;
+    //new_wheel_angles.right = right_wheel_pos_ + right_wheel_vel_ / 5.0;
+
 
     // Update x, y, theta through forward kinematics
     turtlelib::RobotState robot_state = diff_drive_.forwardKinematics(new_wheel_angles);
@@ -429,7 +432,7 @@ private:
     odom_green_tf_.transform.rotation.w = q.w();
     tf_broadcaster_->sendTransform(odom_green_tf_);
 
-    
+    /*
     // Publish odom path
     odom_path_msg_.header.stamp = this->get_clock()->now();
     odom_pose_stamped_msg_.header.stamp = this->get_clock()->now();
@@ -446,15 +449,19 @@ private:
     slam_path_msg_.poses.push_back(slam_pose_stamped_msg_);
     slam_path_pub_->publish(slam_path_msg_);
     // RCLCPP_INFO(this->get_logger(), "slam pose: %f, %f", ekf_.get_x(), ekf_.get_y());
-    
-
+    */
+    counter_++;
+    if (counter_ % 200 == 0){
+      RCLCPP_INFO(this->get_logger(), "odom blue pose: %f, %f, %f", x_, y_, theta_);
+      RCLCPP_INFO(this->get_logger(), "slam pose: %f, %f, %f", ekf_.get_x(), ekf_.get_y(), ekf_.get_theta());
+    }
   }
 };
 
 int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<UDASLAMnode>());
+  rclcpp::spin(std::make_shared<TURTLESLAMnode>());
   rclcpp::shutdown();
   return 0;
 }

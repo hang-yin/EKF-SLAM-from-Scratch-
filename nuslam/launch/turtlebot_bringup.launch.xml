@@ -9,7 +9,7 @@
 
     <node pkg="tf2_ros" exec="static_transform_publisher" name="static_transform_publisher" args="0 0 0 0 0 0 nusim/world map"/>
     
-    <node pkg="nuslam" exec="uda_slam" name="uda_slam_node"/>
+    <node pkg="nuslam" exec="turtle_slam" name="turtle_slam_node"/>
     <node pkg="nuslam" exec="landmarks" name="landmarks_node"/>
     <node pkg="nuturtle_control" exec="turtle_control" name="turtle_control_node"/>
 
