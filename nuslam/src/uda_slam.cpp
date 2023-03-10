@@ -393,7 +393,7 @@ private:
     odom_blue_tf_.transform.rotation.z = q.z();
     odom_blue_tf_.transform.rotation.w = q.w();
     tf_broadcaster_->sendTransform(odom_blue_tf_);
-    RCLCPP_INFO(this->get_logger(), "odom blue pose: %f, %f", x_, y_);
+    // RCLCPP_INFO(this->get_logger(), "odom blue pose: %f, %f", x_, y_);
 
     // Publish transform from map to odom
     turtlelib::Vector2D ekf_pose;
@@ -442,7 +442,7 @@ private:
     slam_pose_stamped_msg_.pose.position.y = ekf_.get_y();
     slam_path_msg_.poses.push_back(slam_pose_stamped_msg_);
     slam_path_pub_->publish(slam_path_msg_);
-    RCLCPP_INFO(this->get_logger(), "slam pose: %f, %f", ekf_.get_x(), ekf_.get_y());
+    // RCLCPP_INFO(this->get_logger(), "slam pose: %f, %f", ekf_.get_x(), ekf_.get_y());
   }
 };
 

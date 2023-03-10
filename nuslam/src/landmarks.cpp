@@ -31,10 +31,12 @@ public:
     lidar_range_min_ = get_parameter("min_lidar_range").as_double();
     lidar_angle_increment_ = get_parameter("angle_increment").as_double();
 
+    auto sensor_qos = rclcpp::SensorDataQoS();
+
     // Initialize publishers, subscribers, and timers
     scan_sub_ = this->create_subscription<sensor_msgs::msg::LaserScan>(
         "/scan",
-        10,
+        sensor_qos,
         std::bind(
             &LandmarksNode::scan_callback,
             this,
@@ -70,6 +72,9 @@ private:
     // Get the scan data
     // cast msg->ranges to std::vector<double>
     // std::vector<double> ranges = msg->ranges;
+
+    RCLCPP_INFO(this->get_logger(), "Received scan data");
+
     std::vector<double> ranges(msg->ranges.begin(), msg->ranges.end());
     std::vector<double> angles;
     for (int i = 0; i < int(ranges.size()); i++)
@@ -85,8 +90,8 @@ private:
     for (int i = 0; i < int(landmarks.size()); i++)
     {
       visualization_msgs::msg::Marker marker;
-      marker.header.frame_id = "red/base_link";
-      marker.header.stamp = msg->header.stamp;
+      marker.header.frame_id = "green/base_link";
+      marker.header.stamp = msg->header.stamp + rclcpp::Duration::from_seconds(0.3);
       marker.ns = "landmarks";
       marker.id = i;
       marker.type = visualization_msgs::msg::Marker::CYLINDER;
@@ -119,6 +124,7 @@ private:
 
     for (int i = 0; i < int(ranges.size()); i++)
     {
+      // RCLCPP_INFO(this->get_logger(), "ranges[%d] = %f", i, ranges[i]);
       if (ranges[i] < lidar_range_max_ && ranges[i] > lidar_range_min_)
       {
         // if curr_cluster is empty, add the first point
@@ -190,11 +196,11 @@ private:
     }
 
     // publish all clusters for TESTING
-    /*
+    
     visualization_msgs::msg::MarkerArray marker_array;
     for (int i = 0; i < int(clusters.size()); i++) {
       visualization_msgs::msg::Marker marker;
-      marker.header.frame_id = "red/base_scan";
+      marker.header.frame_id = "green/base_scan";
       marker.header.stamp = rclcpp::Clock().now();
       marker.ns = "clusters";
       marker.id = i;
@@ -224,7 +230,7 @@ private:
       marker_array.markers.push_back(marker);
     }
     clusters_pub_->publish(marker_array);
-    */
+    
 
     // Step2: implement circle fitting algorithm to detect circles
     std::vector<std::vector<double>> circles;
@@ -354,7 +360,7 @@ private:
       double angle_degree = mean_angle * 180.0 / turtlelib::PI;
       double sq_sum = std::inner_product(angles.begin(), angles.end(), angles.begin(), 0.0);
       double stdev_angle = std::sqrt(sq_sum / angles.size() - mean_angle * mean_angle);
-      // RCLCPP_INFO(this->get_logger(), "Mean angle: %f, Standard deviation: %f", angle_degree, stdev_angle);
+      RCLCPP_INFO(this->get_logger(), "Mean angle: %f, Standard deviation: %f", angle_degree, stdev_angle);
 
       // lastly, push the circle parameters to the circles vector
       if (r < 0.05 && r > 0.01 && stdev_angle < 0.1 && angle_degree > 90 && angle_degree < 160)

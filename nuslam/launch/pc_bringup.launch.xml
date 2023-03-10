@@ -1,0 +1,4 @@
+<launch>
+    <node name="teleop_node" pkg="teleop" exec="teleop" launch-prefix="xterm -e"/>
+    <node pkg="rviz2" exec="rviz2" name="rviz2" args="-d $(find-pkg-share nuslam)/config/turtlebot.rviz"/>
+</launch>

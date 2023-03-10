@@ -1,0 +1,27 @@
+<launch>
+
+    <node name="turtle_msr" pkg="numsr_turtlebot" exec="numsr_turtlebot"/>
+
+    <include file="$(find-pkg-share hls_lfcd_lds_driver)/launch/hlds_laser.launch.py">
+        <arg name="port" value="/dev/ttyUSB0"/>
+        <arg name="frame_id" value="green/base_link"/>
+    </include>
+
+    <node pkg="tf2_ros" exec="static_transform_publisher" name="static_transform_publisher" args="0 0 0 0 0 0 nusim/world map"/>
+    
+    <node pkg="nuslam" exec="uda_slam" name="uda_slam_node"/>
+    <node pkg="nuslam" exec="landmarks" name="landmarks_node"/>
+    <node pkg="nuturtle_control" exec="turtle_control" name="turtle_control_node"/>
+
+    <include file="$(find-pkg-share nuturtle_description)/launch/load_one.launch.py">
+        <arg name="color" value="blue"/>
+        <arg name="use_rviz" value="false"/>
+        <arg name="use_jsp" value="true"/>
+    </include>
+    <include file="$(find-pkg-share nuturtle_description)/launch/load_one.launch.py">
+        <arg name="color" value="green"/>
+        <arg name="use_rviz" value="false"/>
+        <arg name="use_jsp" value="true"/>
+    </include>
+
+</launch>
