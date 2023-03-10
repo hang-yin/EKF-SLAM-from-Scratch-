@@ -1,6 +1,16 @@
 # EKF SLAM Package
 
-# Demo: EKF-SLAM with unknown data association
+# Demo: EKF-SLAM in real world
+
+https://user-images.githubusercontent.com/60046203/224433130-1fed25ba-89fe-4ed9-8a1b-0daec8c5b489.mp4
+
+The last logged pose:
+| Method       | X coordinate | Y coordinate | theta  |
+|--------------|--------------|--------------|--------|
+| Odometry     | 0.023393     | 0.004747     | -0.367 |
+| EKF-SLAM     | -0.007048    | -0.022957    | -0.171 |
+
+# Demo: EKF-SLAM with unknown data association in simulation
 
 [uda_slam_demo.webm](https://user-images.githubusercontent.com/60046203/222990268-22c5cda8-28e6-411e-997d-e82988ee43ad.webm)
 
@@ -17,7 +27,7 @@ Pose error:
 | Odometry    | 0.114088   |
 | EKF-SLAM    | 0.008469   |
 
-# Demo: EKF-SLAM with known landmark location
+# Demo: EKF-SLAM with known landmark location in simulation
 
 https://user-images.githubusercontent.com/60046203/221379997-dfaca644-33cf-44dd-b627-c01b6a9aba9b.mov
 
