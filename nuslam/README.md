@@ -37,3 +37,7 @@ To run EKF-SLAM with known landmark location:
 
 To run EKF-SLAM with unknown data association:
 - run `ros2 launch nuslam unknown_data_assoc.launch.xml cmd_src:=teleop`
+
+To run EKF-SLAM on a real Turtlebot3:
+- on the Turtlebot, run `ros2 launch nuslam turtlebot_bringup.launch.xml`
+- on your PC, run `ros2 launch nuslam pc_bringup.launch.xml`
