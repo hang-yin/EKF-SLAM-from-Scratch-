@@ -287,12 +287,15 @@ private:
 
     for (int i = 0; i < int(fitted_obstacles.size()); i++) {
       // if this is the first detected landmark, simply add it
-      if (num_of_detected_landmarks_ == 0){
-        ekf_.add_landmark(num_of_detected_landmarks_, fitted_obstacles[i].first, fitted_obstacles[i].second);
+      if (num_of_detected_landmarks_ == 0) {
+        ekf_.add_landmark(
+          num_of_detected_landmarks_, fitted_obstacles[i].first,
+          fitted_obstacles[i].second);
         num_of_detected_landmarks_ += 1;
-      }else{
+      } else {
         // check if this is a new landmark
-        std::vector<double> euclidean_distances = ekf_.get_euclidean_distances(fitted_obstacles[i].first, fitted_obstacles[i].second);
+        std::vector<double> euclidean_distances = ekf_.get_euclidean_distances(
+          fitted_obstacles[i].first, fitted_obstacles[i].second);
         // log euclidean distance in a loop
         /*
         for (int j = 0; j < int(euclidean_distances.size()); j++){
@@ -301,20 +304,25 @@ private:
         */
 
         // RCLCPP_INFO(this->get_logger(), "euclidean_distances: %f, %f, %f", euclidean_distances[0], euclidean_distances[1], euclidean_distances[2]);
-        
+
         // find idx of the minimum distance
         // RCLCPP_INFO(this->get_logger(), "I'm here 1");
-        int min_idx = std::min_element(euclidean_distances.begin(), euclidean_distances.end()) - euclidean_distances.begin();
+        int min_idx =
+          std::min_element(
+          euclidean_distances.begin(),
+          euclidean_distances.end()) - euclidean_distances.begin();
         // find minimum distance
         double min_distance = euclidean_distances.at(min_idx);
         // RCLCPP_INFO(this->get_logger(), "I'm here 2");
 
         // RCLCPP_INFO(this->get_logger(), "min_distance: %f", min_distance);
 
-        if (min_distance < 0.1){
+        if (min_distance < 0.1) {
           marker_idx = min_idx;
-        } else if (min_distance > 0.25){
-          ekf_.add_landmark(num_of_detected_landmarks_, fitted_obstacles[i].first, fitted_obstacles[i].second);
+        } else if (min_distance > 0.25) {
+          ekf_.add_landmark(
+            num_of_detected_landmarks_, fitted_obstacles[i].first,
+            fitted_obstacles[i].second);
           // marker_idx = num_of_detected_landmarks_;
           num_of_detected_landmarks_ += 1;
           continue;
@@ -338,7 +346,7 @@ private:
     for (int i = 0; i < int(slam_obstacles_.size()); i++) {
       double x = slam_obstacles_[i].first;
       double y = slam_obstacles_[i].second;
-      if (!(abs(x)<0.01 && abs(y)<0.01)) {
+      if (!(abs(x) < 0.01 && abs(y) < 0.01)) {
         valid_slam_obstacles.push_back(std::make_pair(x, y));
       }
     }
@@ -398,7 +406,7 @@ private:
     odom_blue_tf_.transform.rotation.z = q.z();
     odom_blue_tf_.transform.rotation.w = q.w();
     tf_broadcaster_->sendTransform(odom_blue_tf_);
-    
+
 
     // Publish transform from map to odom
     turtlelib::Vector2D ekf_pose;
@@ -451,9 +459,11 @@ private:
     // RCLCPP_INFO(this->get_logger(), "slam pose: %f, %f", ekf_.get_x(), ekf_.get_y());
     */
     counter_++;
-    if (counter_ % 200 == 0){
+    if (counter_ % 200 == 0) {
       RCLCPP_INFO(this->get_logger(), "odom blue pose: %f, %f, %f", x_, y_, theta_);
-      RCLCPP_INFO(this->get_logger(), "slam pose: %f, %f, %f", ekf_.get_x(), ekf_.get_y(), ekf_.get_theta());
+      RCLCPP_INFO(
+        this->get_logger(), "slam pose: %f, %f, %f", ekf_.get_x(),
+        ekf_.get_y(), ekf_.get_theta());
     }
   }
 };

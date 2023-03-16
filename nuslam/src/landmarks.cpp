@@ -21,7 +21,7 @@ class LandmarksNode : public rclcpp::Node
 {
 public:
   LandmarksNode()
-      : Node("landmarks")
+  : Node("landmarks")
   {
     // Declare parameters
     declare_parameter("min_lidar_range", 0.12);
@@ -35,21 +35,22 @@ public:
 
     // Initialize publishers, subscribers, and timers
     scan_sub_ = this->create_subscription<sensor_msgs::msg::LaserScan>(
-        "/scan",
-        sensor_qos,
-        std::bind(
-            &LandmarksNode::scan_callback,
-            this,
-            std::placeholders::_1));
+      "/scan",
+      sensor_qos,
+      std::bind(
+        &LandmarksNode::scan_callback,
+        this,
+        std::placeholders::_1));
     landmark_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>(
-        "/fitted_landmarks", 10);
+      "/fitted_landmarks", 10);
 
     clusters_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>(
-        "/clusters", 10);
-    
+      "/clusters", 10);
+
     auto rate = 5.0;
-    main_timer_ = this->create_wall_timer(1s/rate, std::bind(&LandmarksNode::main_timer_callback, this));
-    
+    main_timer_ =
+      this->create_wall_timer(1s / rate, std::bind(&LandmarksNode::main_timer_callback, this));
+
     initialize_heartbeat_ = true;
   }
 
@@ -78,8 +79,7 @@ private:
 
     std::vector<double> ranges(msg->ranges.begin(), msg->ranges.end());
     std::vector<double> angles;
-    for (int i = 0; i < int(ranges.size()); i++)
-    {
+    for (int i = 0; i < int(ranges.size()); i++) {
       angles.push_back(msg->angle_min + i * msg->angle_increment);
     }
 
@@ -91,8 +91,7 @@ private:
   {
     // Publish the landmarks
     visualization_msgs::msg::MarkerArray marker_array;
-    for (int i = 0; i < int(landmarks_.size()); i++)
-    {
+    for (int i = 0; i < int(landmarks_.size()); i++) {
       visualization_msgs::msg::Marker marker;
       marker.header.frame_id = "green/base_link";
       marker.header.stamp = this->now(); // + rclcpp::Duration(0, 200000000);
@@ -119,41 +118,38 @@ private:
     landmark_pub_->publish(marker_array);
   }
 
-  std::vector<std::vector<double>> find_landmarks(std::vector<double> ranges, std::vector<double> angles)
+  std::vector<std::vector<double>> find_landmarks(
+    std::vector<double> ranges,
+    std::vector<double> angles)
   {
     // Step1: cluster points into groups
     std::vector<std::vector<double>> clusters;
     double threshold = 0.05;
     std::vector<double> curr_cluster;
 
-    for (int i = 0; i < int(ranges.size()); i++)
-    {
+    for (int i = 0; i < int(ranges.size()); i++) {
       // RCLCPP_INFO(this->get_logger(), "ranges[%d] = %f", i, ranges[i]);
-      if (ranges[i] < lidar_range_max_ && ranges[i] > lidar_range_min_)
-      {
+      if (ranges[i] < lidar_range_max_ && ranges[i] > lidar_range_min_) {
         // if curr_cluster is empty, add the first point
-        if (curr_cluster.size() == 0)
-        {
+        if (curr_cluster.size() == 0) {
           curr_cluster.push_back(ranges[i]);
           curr_cluster.push_back(angles[i]);
         }
         // if curr_cluster is not empty, check if the point is close to the last point in the cluster
-        else
-        {
+        else {
           // given range and angle for current point and previous point in cluster, calculate euclidean distance
-          double prev_x = curr_cluster[curr_cluster.size() - 2] * cos(curr_cluster[curr_cluster.size() - 1]);
-          double prev_y = curr_cluster[curr_cluster.size() - 2] * sin(curr_cluster[curr_cluster.size() - 1]);
+          double prev_x = curr_cluster[curr_cluster.size() - 2] *
+            cos(curr_cluster[curr_cluster.size() - 1]);
+          double prev_y = curr_cluster[curr_cluster.size() - 2] *
+            sin(curr_cluster[curr_cluster.size() - 1]);
           double curr_x = ranges[i] * cos(angles[i]);
           double curr_y = ranges[i] * sin(angles[i]);
           double dist = sqrt(pow(curr_x - prev_x, 2) + pow(curr_y - prev_y, 2));
           // RCLCPP_INFO(this->get_logger(), "dist: %f", dist);
-          if (dist < threshold)
-          {
+          if (dist < threshold) {
             curr_cluster.push_back(ranges[i]);
             curr_cluster.push_back(angles[i]);
-          }
-          else
-          {
+          } else {
             clusters.push_back(curr_cluster);
             curr_cluster.clear();
             curr_cluster.push_back(ranges[i]);
@@ -168,18 +164,15 @@ private:
     // check if the first and last points are close
     // if so, combine the two clusters
     double dist = abs(ranges[0] - curr_cluster[curr_cluster.size() - 2]);
-    if (dist < threshold)
-    {
+    if (dist < threshold) {
       // combine the two clusters
       std::vector<double> combined_cluster;
       // push the first cluster to the combined cluster
-      for (int i = 0; i < int(clusters[0].size()); i++)
-      {
+      for (int i = 0; i < int(clusters[0].size()); i++) {
         combined_cluster.push_back(clusters[0][i]);
       }
       // push the last cluster to the combined cluster
-      for (int i = 0; i < int(curr_cluster.size()); i++)
-      {
+      for (int i = 0; i < int(curr_cluster.size()); i++) {
         combined_cluster.push_back(curr_cluster[i]);
       }
       // remove the first and last clusters
@@ -190,17 +183,15 @@ private:
     }
 
     // discard clusters that have less than 3 points
-    for (int i = 0; i < int(clusters.size()); i++)
-    {
-      if (clusters[i].size() < 6)
-      {
+    for (int i = 0; i < int(clusters.size()); i++) {
+      if (clusters[i].size() < 6) {
         clusters.erase(clusters.begin() + i);
         i--;
       }
     }
 
     // publish all clusters for TESTING
-    
+
     visualization_msgs::msg::MarkerArray marker_array;
     for (int i = 0; i < int(clusters.size()); i++) {
       visualization_msgs::msg::Marker marker;
@@ -234,23 +225,20 @@ private:
       marker_array.markers.push_back(marker);
     }
     clusters_pub_->publish(marker_array);
-    
+
 
     // Step2: implement circle fitting algorithm to detect circles
     std::vector<std::vector<double>> circles;
-    for (int i = 0; i < int(clusters.size()); i++)
-    {
+    for (int i = 0; i < int(clusters.size()); i++) {
       // Step2.0: convert cluster points to cartesian coordinates
       std::vector<double> cluster_x;
       std::vector<double> cluster_y;
-      for (int j = 0; j < int(clusters[i].size()); j += 2)
-      {
+      for (int j = 0; j < int(clusters[i].size()); j += 2) {
         cluster_x.push_back(clusters[i][j] * cos(clusters[i][j + 1]));
         cluster_y.push_back(clusters[i][j] * sin(clusters[i][j + 1]));
       }
       // experiment with a check condition
-      if (cluster_x.size() < 4)
-      {
+      if (cluster_x.size() < 4) {
         continue;
       }
       // Step2.1: calculate centroid
@@ -259,15 +247,13 @@ private:
       double y_sum = std::accumulate(std::begin(cluster_y), std::end(cluster_y), 0.0);
       double centroid_y = y_sum / cluster_y.size();
       // Step2.2: shift coordinates so that centroid is at origin
-      for (int j = 0; j < int(cluster_x.size()); j++)
-      {
+      for (int j = 0; j < int(cluster_x.size()); j++) {
         cluster_x[j] -= centroid_x;
         cluster_y[j] -= centroid_y;
       }
       // Step2.3: calculate z
       std::vector<double> z;
-      for (int j = 0; j < int(cluster_x.size()); j++)
-      {
+      for (int j = 0; j < int(cluster_x.size()); j++) {
         z.push_back(pow(cluster_x[j], 2) + pow(cluster_y[j], 2));
       }
       // Step2.4: calculate mean of z
@@ -306,13 +292,11 @@ private:
 
       // Step2.10: check if the last singular value is small
       arma::vec A;
-      if (sigma.back() < pow(10, -12))
-      {
+      if (sigma.back() < pow(10, -12)) {
         A = V.col(3);
       }
       // Step2.11: the second case for A
-      else
-      {
+      else {
         arma::mat sigma_mat = arma::diagmat(sigma);
         arma::mat Y = V * sigma_mat * V.t(); // matrix multiplication: incompatible matrix dimensions 4x4 and 3x3 when there are only 2 circles
         arma::mat Q = Y * H_inv * Y;
@@ -321,10 +305,8 @@ private:
         arma::mat eigen_mat;
         arma::eig_sym(eigen_vec, eigen_mat, Q);
         arma::vec A_s;
-        for (int j = 0; j < int(eigen_vec.size()); j++)
-        {
-          if (eigen_vec(j) > 0)
-          {
+        for (int j = 0; j < int(eigen_vec.size()); j++) {
+          if (eigen_vec(j) > 0) {
             A_s = eigen_mat.col(j);
             break;
           }
@@ -335,7 +317,11 @@ private:
       // Step2.12: calculate the circle parameters
       double a = (-A.at(1)) / (2 * A.at(0));
       double b = (-A.at(2)) / (2 * A.at(0));
-      double r = sqrt((pow(A.at(1), 2) + pow(A.at(2), 2) - (4.0 * A.at(0) * A.at(3))) / (4 * pow(A.at(0), 2)));
+      double r =
+        sqrt(
+        (pow(
+          A.at(1),
+          2) + pow(A.at(2), 2) - (4.0 * A.at(0) * A.at(3))) / (4 * pow(A.at(0), 2)));
       // Step2.13: calculate the circle center
       double center_x = a + centroid_x;
       double center_y = b + centroid_y;
@@ -346,8 +332,7 @@ private:
       double p2_x = cluster_x.at(int(cluster_x.size()) - 1);
       double p2_y = cluster_y.at(int(cluster_y.size()) - 1);
       std::vector<double> angles;
-      for (int j = 1; j < int(cluster_x.size() - 1); j++)
-      {
+      for (int j = 1; j < int(cluster_x.size() - 1); j++) {
         double p_x = cluster_x.at(j);
         double p_y = cluster_y.at(j);
         // angle is the angle between the line p1p and the line p2p
@@ -370,7 +355,8 @@ private:
       double center_dist = sqrt(pow(center_x, 2) + pow(center_y, 2));
 
       // lastly, push the circle parameters to the circles vector
-      if (r < 0.06 && r > 0.03 && stdev_angle < 0.3 && angle_degree > 110 && angle_degree < 140 && center_dist < 0.7)
+      if (r < 0.06 && r > 0.03 && stdev_angle < 0.3 && angle_degree > 110 && angle_degree < 140 &&
+        center_dist < 0.7)
       {
         std::vector<double> circle;
         circle.push_back(center_x);
@@ -380,39 +366,43 @@ private:
       }
     }
 
-    if (initialize_heartbeat_){
+    if (initialize_heartbeat_) {
       initialize_heartbeat_ = false;
-      for (int i = 0; i < int(circles.size()); i++){
+      for (int i = 0; i < int(circles.size()); i++) {
         std::pair<std::vector<double>, int> heartbeat;
         heartbeat.first = circles[i];
         heartbeat.second = 0;
         circles_heartbeats_.push_back(heartbeat);
       }
-    }else{
-      for (int i = 0; i < int(circles.size()); i++){
+    } else {
+      for (int i = 0; i < int(circles.size()); i++) {
         bool found = false;
-        for (int j = 0; j < int(circles_heartbeats_.size()); j++){
-          double distance = sqrt(pow(circles[i][0] - circles_heartbeats_[j].first[0], 2) + pow(circles[i][1] - circles_heartbeats_[j].first[1], 2));
+        for (int j = 0; j < int(circles_heartbeats_.size()); j++) {
+          double distance =
+            sqrt(
+            pow(
+              circles[i][0] - circles_heartbeats_[j].first[0],
+              2) + pow(circles[i][1] - circles_heartbeats_[j].first[1], 2));
           // RCLCPP_INFO(this->get_logger(), "Distance: %f", distance);
-          if (distance < 0.3){
+          if (distance < 0.3) {
             found = true;
             circles_heartbeats_[j].first = circles[i];
             circles_heartbeats_[j].second = 0;
             break;
           }
         }
-        if (!found){
+        if (!found) {
           std::pair<std::vector<double>, int> heartbeat;
           heartbeat.first = circles[i];
           heartbeat.second = 0;
           circles_heartbeats_.push_back(heartbeat);
         }
       }
-      for (int i = 0; i < int(circles_heartbeats_.size()); i++){
+      for (int i = 0; i < int(circles_heartbeats_.size()); i++) {
         circles_heartbeats_[i].second++;
       }
-      for (int i = 0; i < int(circles_heartbeats_.size()); i++){
-        if (circles_heartbeats_[i].second > 15){
+      for (int i = 0; i < int(circles_heartbeats_.size()); i++) {
+        if (circles_heartbeats_[i].second > 15) {
           circles_heartbeats_.erase(circles_heartbeats_.begin() + i);
         }
       }
@@ -425,7 +415,7 @@ private:
     // RCLCPP_INFO(this->get_logger(), "Number of circles: %d", int(circles.size()));
 
     // push all circles in circles_hearbeat to landmarks vector
-    for (int i = 0; i < int(circles_heartbeats_.size()); i++){
+    for (int i = 0; i < int(circles_heartbeats_.size()); i++) {
       landmarks.push_back(circles_heartbeats_[i].first);
     }
 
@@ -433,7 +423,7 @@ private:
   }
 };
 
-int main(int argc, char *argv[])
+int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
   rclcpp::spin(std::make_shared<LandmarksNode>());
