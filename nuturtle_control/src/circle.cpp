@@ -17,8 +17,8 @@ public:
        linear_velocity_ = 0.06;
        radius_ = 0.2;
      */
-    angular_velocity_ = 0.2;
-    linear_velocity_ = 0.12;
+    angular_velocity_ = 0.1;
+    linear_velocity_ = 0.06;
     radius_ = 0.6;
 
     // Declare cmd_vel publisher
