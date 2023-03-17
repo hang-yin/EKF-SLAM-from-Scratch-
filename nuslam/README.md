@@ -32,6 +32,9 @@ Pose error:
 https://user-images.githubusercontent.com/60046203/221379997-dfaca644-33cf-44dd-b627-c01b6a9aba9b.mov
 
 # Instruction
+
+***PLEASE remember to clone and build the `teleop` package included in this repository***
+
 To run EKF-SLAM with known landmark location:
 - run `ros2 launch nuslam slam.launch.xml cmd_src:=teleop`
 
